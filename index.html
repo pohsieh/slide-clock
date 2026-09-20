@@ -790,6 +790,8 @@ function stepSetup(){
         S.slides = r.slides;
         S.demo = false;
         S.open = 0;
+        S.run = null; S.rehearsal = null; S.reviewing = false;
+        idbPut("run-audio", null).catch(function(){});
         splitEvenly();
         set({step:1});
       })
@@ -1006,7 +1008,7 @@ function buildCard(i, live, ctl){
   }
   var reset = el("button","resetbtn", S.run ? "\u25A0" : "\u21BA");
   reset.setAttribute("aria-label", tr(S.run ? "backToClock" : "resetClock"));
-  if (ctl) reset.onclick = S.run ? ctl.onFinish : ctl.onReset; else reset.tabIndex = -1;
+  if (ctl) reset.onclick = S.run ? ctl.onFinish : ctl.onReset; else { reset.tabIndex = -1; reset.disabled = true; }
   top.appendChild(reset);
   card.appendChild(top);
 
@@ -1016,15 +1018,15 @@ function buildCard(i, live, ctl){
   var prev = el("button","ringnav prev","\u2190");
   prev.setAttribute("aria-label",tr("prevSlide"));
   prev.disabled = (i === 0);
-  if (ctl) prev.onclick = ctl.onPrev; else prev.tabIndex = -1;
+  if (ctl) prev.onclick = ctl.onPrev; else { prev.tabIndex = -1; prev.disabled = true; }
   var next = el("button","ringnav next","\u2192");
   next.setAttribute("aria-label",tr("nextSlide"));
   next.disabled = (i === S.slides.length-1);
-  if (ctl) next.onclick = ctl.onNext; else next.tabIndex = -1;
+  if (ctl) next.onclick = ctl.onNext; else { next.tabIndex = -1; next.disabled = true; }
 
   var ringbtn = el("button","ringbtn");
   ringbtn.setAttribute("aria-label",tr("ringBtn"));
-  if (ctl) ringbtn.onclick = ctl.onToggle; else ringbtn.tabIndex = -1;
+  if (ctl) ringbtn.onclick = ctl.onToggle; else { ringbtn.tabIndex = -1; ringbtn.disabled = true; }
 
   var rw = el("div","ringwrap");
   var NS = "http://www.w3.org/2000/svg";
@@ -1683,6 +1685,7 @@ function loadDemo(){
   set({
     demo:true, step:1, open:0, title:d.title, totalMin:15, cur:0,
     running:false, accMs:0, slideStartMs:0, everStarted:false,
+    run:null, rehearsal:null, reviewing:false,
     slides: d.slides.map(function(x){ return {min:x.min, title:x.title, note:x.note}; })
   });
 }

@@ -1,8 +1,8 @@
-/* Slide Clock service worker - build f739653a22
+/* Slide Clock service worker - build 2912475ba6
    The app has to work in a room with no usable wifi, so the shell is
    cached on install and served from cache first. Fonts are cached as
    they are fetched; if they never are, the fallback stack carries it. */
-var CACHE = "slide-clock-f739653a22";
+var CACHE = "slide-clock-2912475ba6";
 var SHELL = ["./","./index.html","./manifest.webmanifest",
              "./icon-192.png","./icon-512.png","./icon-maskable-512.png",
              "./apple-touch-icon.png","./favicon.png"];
