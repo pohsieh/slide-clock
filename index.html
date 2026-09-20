@@ -59,8 +59,8 @@ img{max-width:100%}
   --glass-top:rgba(255,255,255,.65);
   --shadow:0 10px 34px -14px rgba(17,17,16,.42);
   --radius:16px;
-  --display:"Archivo",-apple-system,"Segoe UI",sans-serif;
-  --sans:"Public Sans",-apple-system,"Segoe UI",sans-serif;
+  --display:"Archivo",-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",sans-serif;
+  --sans:"Public Sans",-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",sans-serif;
   --mono:"IBM Plex Mono","SFMono-Regular",Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){
@@ -99,7 +99,13 @@ body.presenting .wrap{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px)
 .masthead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:22px 0 0}
 .mark{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.03em}
 .mark span{color:var(--accent)}
-.tagline{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.mark em{font-family:var(--mono);font-style:normal;font-size:9.5px;font-weight:400;letter-spacing:.06em;color:var(--ink-3);margin-left:7px;vertical-align:2px}
+.langsel{display:flex;gap:2px;padding:2px;border:1px solid var(--rule);border-radius:99px;background:var(--card)}
+.langsel button{
+  border:0;background:transparent;border-radius:99px;cursor:pointer;
+  padding:5px 11px;font-size:12px;font-weight:600;color:var(--ink-3);line-height:1.2;
+}
+.langsel button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 
 h2{font-family:var(--display);font-weight:800;font-size:clamp(28px,7.6vw,38px);letter-spacing:-.04em;line-height:1.03;margin:0;text-wrap:balance}
 .sub{margin:0;color:var(--ink-2);font-size:15.5px;line-height:1.5;max-width:46ch}
@@ -332,8 +338,8 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border
 <body>
 <div class="wrap">
   <header class="masthead">
-    <div class="mark">Slide <span>Clock</span></div>
-    <div class="tagline">v0.3</div>
+    <div class="mark">Slide <span>Clock</span><em>v0.3</em></div>
+    <div class="langsel" id="langsel"></div>
   </header>
   <main id="stage"></main>
 </div>
@@ -341,16 +347,142 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border
 
 <script>
 var LS = "sc_v03_state";
+
+/* ---------------------------------------------------------------
+   Two languages. Everything a speaker reads lives here, including
+   the labels a screen reader announces and the worked example -
+   an English demo would not show what the Chinese interface is
+   actually like to use.
+   --------------------------------------------------------------- */
+var LANG_KEY = "sc_lang";
+var LANG = "en";
+try {
+  var saved = localStorage.getItem(LANG_KEY);
+  LANG = saved || (/^zh/i.test(navigator.language || "") ? "zh" : "en");
+} catch(e){
+  LANG = /^zh/i.test(navigator.language || "") ? "zh" : "en";
+}
+
+var STR = {
+en: {
+  setupH:"How many slides, and how long?",
+  setupSub:"Two numbers. Then you write what you will say on each one.",
+  talkLab:"What is the talk", talkPh:"Name it in a few words",
+  talkHint:"For example: First results from the FTIR grip-force rig",
+  slidesLab:"Slides", slidesN:function(n){return n+" slides";}, pages:"pages",
+  totalLab:"Total time", minN:function(m){return m+" min";},
+  totalHint:"Everything downstream is measured against this number.",
+  toNotes:"Write the notes", demo:"No time? Load a filled-in example",
+  fewer:"One slide fewer", more:"One slide more",
+
+  notesH:"What do you say on each slide?",
+  notesSub:"Tap a card to open it. Give each slide a short title \u2014 that is what you see as the next-slide cue on stage.",
+  splitEven:"Split evenly", suggest:"Suggest a split",
+  allocated:function(a,t){return a+" allocated of "+t;},
+  leftOver:function(v){return v+" left";}, overBy:function(v){return v+" over";},
+  titlePh:"Slide title", notePh:"What you say here",
+  removeSlide:"Remove slide", addSlide:"Add a slide", toClock:"Go to the clock",
+  nothingYet:"Nothing written yet",
+  lessTime:function(n){return "Less time on slide "+n;},
+  moreTime:function(n){return "More time on slide "+n;},
+  reading:"Reading your notes\u2026",
+
+  leftOnSlide:"Left on this slide", tapStart:"Tap to start",
+  ofTime:function(v){return "of "+v;}, pausedTap:"Paused \u00b7 tap to go",
+  noNote:"No note for this slide.",
+  overallLeft:"Overall left", pace:"Pace", notStarted:"Not started", onTime:"On time",
+  behind:function(v){return v+" behind";}, ahead:function(v){return v+" ahead";},
+  nextN:function(n){return "Next \u00b7 "+n;}, nothingWritten:"Nothing written",
+  end:"End", lastSlide:"Last slide \u2014 stop talking",
+  noSlides:"No slides yet.", backSetup:"Back to setup",
+  prevSlide:"Previous slide", nextSlide:"Next slide", resetClock:"Reset the clock",
+  startClock:"Start the clock", pauseClock:"Pause the clock", resumeClock:"Resume the clock",
+  ringBtn:"Start or pause the clock", slideN:function(n){return "Slide "+n;},
+
+  navSetup:"Setup", navNotes:"Notes", navPresent:"Present",
+  errNotGranted:"You have not allowed this page to call Claude. Use Split evenly and adjust by hand.",
+  errRate:"Too many requests in a row. Wait a few seconds.",
+  errGeneric:"That did not come back cleanly. Use Split evenly and adjust by hand."
+},
+zh: {
+  setupH:"\u5e7e\u9801\u6295\u5f71\u7247\uff0c\u6709\u591a\u5c11\u6642\u9593\uff1f",
+  setupSub:"\u5169\u500b\u6578\u5b57\u3002\u63a5\u8457\u5beb\u4e0b\u6bcf\u4e00\u9801\u4f60\u8981\u8b1b\u4ec0\u9ebc\u3002",
+  talkLab:"\u9019\u5834\u7c21\u5831\u662f\u4ec0\u9ebc", talkPh:"\u7528\u5e7e\u500b\u5b57\u8aaa",
+  talkHint:"\u4f8b\u5982\uff1aFTIR \u6293\u63e1\u529b\u91cf\u6e2c\u7684\u7b2c\u4e00\u6279\u7d50\u679c",
+  slidesLab:"\u6295\u5f71\u7247", slidesN:function(n){return n+" \u9801";}, pages:"\u9801",
+  totalLab:"\u7e3d\u6642\u9593", minN:function(m){return m+" \u5206";},
+  totalHint:"\u5f8c\u9762\u6bcf\u4e00\u4ef6\u4e8b\u90fd\u4ee5\u9019\u500b\u6578\u5b57\u70ba\u6e96\u3002",
+  toNotes:"\u958b\u59cb\u5beb\u8b1b\u7a3f", demo:"\u6c92\u7a7a\u586b\uff1f\u8f09\u5165\u4e00\u4efd\u586b\u597d\u7684\u7bc4\u4f8b",
+  fewer:"\u5c11\u4e00\u9801", more:"\u591a\u4e00\u9801",
+
+  notesH:"\u6bcf\u4e00\u9801\u4f60\u8981\u8b1b\u4ec0\u9ebc\uff1f",
+  notesSub:"\u9ede\u4e00\u5f35\u5361\u7247\u6253\u958b\u5b83\u3002\u7d66\u6bcf\u9801\u4e00\u500b\u77ed\u6a19\u984c \u2014\u2014 \u53f0\u4e0a\u7684\u4e0b\u4e00\u9801\u63d0\u793a\u986f\u793a\u7684\u5c31\u662f\u5b83\u3002",
+  splitEven:"\u5e73\u5747\u5206\u914d", suggest:"\u5efa\u8b70\u5206\u914d",
+  allocated:function(a,t){return "\u5df2\u5206\u914d "+a+"\uff0c\u5171 "+t;},
+  leftOver:function(v){return "\u9084\u5269 "+v;}, overBy:function(v){return "\u8d85\u51fa "+v;},
+  titlePh:"\u9019\u9801\u7684\u6a19\u984c", notePh:"\u9019\u9801\u4f60\u8981\u8b1b\u7684\u8a71",
+  removeSlide:"\u522a\u9664\u9019\u9801", addSlide:"\u65b0\u589e\u4e00\u9801", toClock:"\u9032\u5165\u8a08\u6642",
+  nothingYet:"\u9084\u6c92\u5beb",
+  lessTime:function(n){return "\u7b2c "+n+" \u9801\u6e1b\u5c11\u6642\u9593";},
+  moreTime:function(n){return "\u7b2c "+n+" \u9801\u589e\u52a0\u6642\u9593";},
+  reading:"\u6b63\u5728\u8b80\u4f60\u7684\u8b1b\u7a3f\u2026",
+
+  leftOnSlide:"\u9019\u9801\u5269\u9918", tapStart:"\u9ede\u4e00\u4e0b\u958b\u59cb",
+  ofTime:function(v){return "\u5171 "+v;}, pausedTap:"\u5df2\u66ab\u505c \u00b7 \u9ede\u4e00\u4e0b\u7e7c\u7e8c",
+  noNote:"\u9019\u9801\u6c92\u6709\u8b1b\u7a3f\u3002",
+  overallLeft:"\u5168\u5834\u5269\u9918", pace:"\u9032\u5ea6", notStarted:"\u5c1a\u672a\u958b\u59cb", onTime:"\u6e96\u6642",
+  behind:function(v){return "\u843d\u5f8c "+v;}, ahead:function(v){return "\u8d85\u524d "+v;},
+  nextN:function(n){return "\u4e0b\u4e00\u9801 \u00b7 "+n;}, nothingWritten:"\u6c92\u6709\u5167\u5bb9",
+  end:"\u7d50\u675f", lastSlide:"\u6700\u5f8c\u4e00\u9801 \u2014\u2014 \u505c\u4e0b\u4f86",
+  noSlides:"\u9084\u6c92\u6709\u4efb\u4f55\u9801\u9762\u3002", backSetup:"\u56de\u5230\u8a2d\u5b9a",
+  prevSlide:"\u4e0a\u4e00\u9801", nextSlide:"\u4e0b\u4e00\u9801", resetClock:"\u91cd\u8a2d\u8a08\u6642",
+  startClock:"\u958b\u59cb\u8a08\u6642", pauseClock:"\u66ab\u505c\u8a08\u6642", resumeClock:"\u7e7c\u7e8c\u8a08\u6642",
+  ringBtn:"\u958b\u59cb\u6216\u66ab\u505c\u8a08\u6642", slideN:function(n){return "\u7b2c "+n+" \u9801";},
+
+  navSetup:"\u8a2d\u5b9a", navNotes:"\u8b1b\u7a3f", navPresent:"\u4e0a\u53f0",
+  errNotGranted:"\u4f60\u6c92\u6709\u5141\u8a31\u9019\u500b\u9801\u9762\u547c\u53eb Claude\u3002\u8acb\u7528\u300c\u5e73\u5747\u5206\u914d\u300d\u518d\u624b\u52d5\u8abf\u3002",
+  errRate:"\u53eb\u5f97\u592a\u983b\u7e41\u4e86\uff0c\u7b49\u5e7e\u79d2\u518d\u8a66\u3002",
+  errGeneric:"\u9019\u6b21\u6c92\u6709\u6b63\u5e38\u56de\u4f86\u3002\u8acb\u7528\u300c\u5e73\u5747\u5206\u914d\u300d\u518d\u624b\u52d5\u8abf\u3002"
+}
+};
+function tr(k){
+  var v = (STR[LANG] || STR.en)[k];
+  if (v === undefined) v = STR.en[k];
+  if (typeof v === "function") return v.apply(null, [].slice.call(arguments,1));
+  return v;
+}
+function setLang(l){
+  LANG = l;
+  try { localStorage.setItem(LANG_KEY, l); } catch(e){}
+  document.documentElement.lang = (l === "zh" ? "zh-Hant" : "en");
+  /* the build wrapper adds chrome of its own (the install hint); it listens
+     for this rather than the app having to know it exists */
+  try { document.dispatchEvent(new CustomEvent("sc:lang", {detail:l})); } catch(e){}
+  if (S.demo) loadDemo(); else render();
+}
+function renderLangSel(){
+  var box = document.getElementById("langsel");
+  if (!box) return;
+  box.replaceChildren();
+  [["en","EN"],["zh","\u4e2d\u6587"]].forEach(function(o){
+    var b = el("button","",o[1]);
+    b.setAttribute("aria-pressed", String(LANG===o[0]));
+    b.setAttribute("lang", o[0]==="zh" ? "zh-Hant" : "en");
+    b.onclick = function(){ if (LANG!==o[0]) setLang(o[0]); };
+    box.appendChild(b);
+  });
+}
+
 var ICONS = {
   setup:'<svg viewBox="0 0 24 24"><path d="M4 7h8M17 7h3M4 17h3M12 17h8"/><circle cx="14.5" cy="7" r="2.3"/><circle cx="9.5" cy="17" r="2.3"/></svg>',
   notes:'<svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="6.2" rx="2.2"/><rect x="3" y="13.3" width="18" height="6.2" rx="2.2"/></svg>',
   present:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.6V12l3 1.8"/></svg>'
 };
-var NAV = [["Setup","setup"],["Notes","notes"],["Present","present"]];
+var NAV = [["navSetup","setup"],["navNotes","notes"],["navPresent","present"]];
 
 function blank(){
   return {
-    step:0, title:"", totalMin:15,
+    step:0, title:"", totalMin:15, demo:false,
     slides:[], open:0,
     cur:0,
     running:false, startedAt:0, accMs:0, slideStartMs:0, everStarted:false
@@ -401,7 +533,7 @@ function buildNav(){
     var ic = el("span","navicon");
     ic.innerHTML = ICONS[n[1]];
     b.appendChild(ic);
-    b.appendChild(el("span","navlabel",n[0]));
+    b.appendChild(el("span","navlabel",tr(n[0])));
     b.onclick = function(){ if(i!==S.step) set({step:i}); };
     bar.appendChild(b);
     navItems.push(b);
@@ -414,6 +546,9 @@ function updateNav(animate){
   navItems.forEach(function(b,i){
     b.setAttribute("aria-current", String(i===S.step));
     b.disabled = (i > 0 && S.slides.length === 0);
+    /* the bar is built once, so its labels are refreshed here or they
+       would keep the language they were born in */
+    b.querySelector(".navlabel").textContent = tr(NAV[i][0]);
   });
   var icon = navItems[S.step] && navItems[S.step].querySelector(".navicon");
   if (!icon || !navInd) return;
@@ -453,34 +588,35 @@ if (window.visualViewport) window.visualViewport.addEventListener("resize", func
 function stepSetup(){
   var p = el("section","step");
   var h = el("div","panel-head");
-  h.appendChild(el("h2","","How many slides, and how long?"));
-  h.appendChild(el("p","sub","Two numbers. Then you write what you will say on each one."));
+  h.appendChild(el("h2","",tr("setupH")));
+  h.appendChild(el("p","sub",tr("setupSub")));
   p.appendChild(h);
 
   var f0 = el("div","field");
-  f0.appendChild(el("span","lab","What is the talk"));
+  f0.appendChild(el("span","lab",tr("talkLab")));
   var t = el("input","bigfield");
-  t.type="text"; t.placeholder="Name it in a few words"; t.value=S.title;
+  t.type="text"; t.placeholder=tr("talkPh"); t.value=S.title;
   t.oninput=function(){ S.title=t.value; save(); };
   f0.appendChild(t);
+  f0.appendChild(el("span","hint",tr("talkHint")));
   p.appendChild(f0);
 
   var f1 = el("div","field");
-  f1.appendChild(el("span","lab","Slides"));
+  f1.appendChild(el("span","lab",tr("slidesLab")));
   var st = el("div","stepper");
   var minus = el("button","stepbtn","−");
-  minus.setAttribute("aria-label","One slide fewer");
+  minus.setAttribute("aria-label",tr("fewer"));
   minus.onclick=function(){ if(S.slides.length>0){ S.slides.pop(); save(); syncSetup(); } };
   var val = el("div","stepval", String(S.slides.length||0));
   var plus = el("button","stepbtn","+");
-  plus.setAttribute("aria-label","One slide more");
+  plus.setAttribute("aria-label",tr("more"));
   plus.onclick=function(){ if(S.slides.length<80){ S.slides.push({title:"",note:"",min:1}); save(); syncSetup(); } };
   st.appendChild(minus); st.appendChild(val); st.appendChild(plus);
-  st.appendChild(el("span","stepunit","pages"));
+  st.appendChild(el("span","stepunit",tr("pages")));
   f1.appendChild(st);
   var quick = el("div","pillrow");
   [5,8,10,12,15,20].forEach(function(n){
-    var b = el("button","pill", n + " slides");
+    var b = el("button","pill", tr("slidesN", n));
     b.dataset.count = String(n);
     b.setAttribute("aria-pressed", String(S.slides.length===n));
     b.onclick=function(){ setCount(n); };
@@ -490,27 +626,27 @@ function stepSetup(){
   p.appendChild(f1);
 
   var f2 = el("div","field");
-  f2.appendChild(el("span","lab","Total time"));
+  f2.appendChild(el("span","lab",tr("totalLab")));
   var mins = el("div","pillrow");
   [5,10,15,20,30,45,60].forEach(function(m){
-    var c = el("button","pill", m + " min");
+    var c = el("button","pill", tr("minN", m));
     c.dataset.min = String(m);
     c.setAttribute("aria-pressed", String(S.totalMin===m));
     c.onclick=function(){ S.totalMin = m; save(); syncSetup(); };
     mins.appendChild(c);
   });
   f2.appendChild(mins);
-  f2.appendChild(el("span","hint","Everything downstream is measured against this number."));
+  f2.appendChild(el("span","hint",tr("totalHint")));
   p.appendChild(f2);
 
   var act = el("div","actions");
-  var go = el("button","btn","Write the notes");
+  var go = el("button","btn",tr("toNotes"));
   go.disabled = S.slides.length===0;
   go.onclick=function(){ set({step:1, open:0}); };
   act.appendChild(go);
   p.appendChild(act);
 
-  var demo = el("button","linkbtn","No time? Load a filled-in example");
+  var demo = el("button","linkbtn",tr("demo"));
   demo.onclick = loadDemo;
   p.appendChild(demo);
 
@@ -546,8 +682,8 @@ function splitEvenly(){
 function stepNotes(){
   var p = el("section","step");
   var h = el("div","panel-head");
-  h.appendChild(el("h2","","What do you say on each slide?"));
-  h.appendChild(el("p","sub","Tap a card to open it. A line or two is plenty — this is a reminder on stage, not a script."));
+  h.appendChild(el("h2","",tr("notesH")));
+  h.appendChild(el("p","sub",tr("notesSub")));
   p.appendChild(h);
 
   var bud = el("div","budget");
@@ -561,21 +697,21 @@ function stepNotes(){
 
   function refreshBudget(){
     var a = allocatedMs(), t = totalMs();
-    fig.textContent = fmt(a) + " allocated of " + fmt(t);
+    fig.textContent = tr("allocated", fmt(a), fmt(t));
     var over = a > t;
     state.className = "budget-state " + (over?"over":"ok");
-    state.textContent = over ? (fmt(a-t)+" over") : (fmt(t-a)+" left");
+    state.textContent = over ? tr("overBy", fmt(a-t)) : tr("leftOver", fmt(t-a));
     fill.className = "budget-fill" + (over?" over":"");
     fill.style.width = Math.min(100,(a/Math.max(1,t))*100) + "%";
   }
   refreshBudget();
 
   var tools = el("div","actions");
-  var even = el("button","btn ghost","Split evenly");
+  var even = el("button","btn ghost",tr("splitEven"));
   even.onclick=function(){ splitEvenly(); save(); render(); };
   tools.appendChild(even);
   if (!sampleResolved || sampleFn){
-    var ai = el("button","btn ghost","Suggest a split");
+    var ai = el("button","btn ghost",tr("suggest"));
     ai.onclick=function(){ suggestSplit(tools); };
     tools.appendChild(ai);
   }
@@ -590,22 +726,22 @@ function stepNotes(){
     var bin = el("div","wbody-in");
     var pad = el("div","wbody-pad");
     function syncLabel(){
-      ttl.textContent = labelFor(sl) || "Nothing written yet";
+      ttl.textContent = labelFor(sl) || tr("nothingYet");
       ttl.className = "wtitle" + (labelFor(sl) ? "" : " empty");
     }
     var ti = el("input","titlefield");
     ti.type = "text";
-    ti.placeholder = "Slide title";
+    ti.placeholder = tr("titlePh");
     ti.value = sl.title || "";
     ti.oninput=function(){ sl.title = ti.value; save(); syncLabel(); };
     var ta = el("textarea");
-    ta.placeholder = "What you say here";
+    ta.placeholder = tr("notePh");
     ta.value = sl.note;
     ta.oninput=function(){ sl.note = ta.value; save(); syncLabel(); };
     var head = el("button","wcard-head");
     head.setAttribute("aria-expanded", String(S.open===i));
     head.appendChild(el("span","wn", String(i+1).padStart(2,"0")));
-    var ttl = el("span","wtitle" + (labelFor(sl) ? "" : " empty"), labelFor(sl) || "Nothing written yet");
+    var ttl = el("span","wtitle" + (labelFor(sl) ? "" : " empty"), labelFor(sl) || tr("nothingYet"));
     head.appendChild(ttl);
     head.appendChild(el("span","wmin", fmt(sl.min*60000)));
     head.appendChild(el("span","wchev","▲"));
@@ -624,14 +760,14 @@ function stepNotes(){
 
     var row = el("div","wrow");
     var ms = el("div","mstep");
-    var dn = el("button","","−"); dn.setAttribute("aria-label","Less time on slide "+(i+1));
+    var dn = el("button","","−"); dn.setAttribute("aria-label",tr("lessTime", i+1));
     var v  = el("span","v", fmt(sl.min*60000));
-    var up = el("button","","+"); up.setAttribute("aria-label","More time on slide "+(i+1));
+    var up = el("button","","+"); up.setAttribute("aria-label",tr("moreTime", i+1));
     dn.onclick=function(){ sl.min=Math.max(0.5,Math.round((sl.min-0.5)*2)/2); v.textContent=fmt(sl.min*60000); head.querySelector(".wmin").textContent=v.textContent; save(); refreshBudget(); };
     up.onclick=function(){ sl.min=Math.min(30,Math.round((sl.min+0.5)*2)/2); v.textContent=fmt(sl.min*60000); head.querySelector(".wmin").textContent=v.textContent; save(); refreshBudget(); };
     ms.appendChild(dn); ms.appendChild(v); ms.appendChild(up);
     row.appendChild(ms);
-    var del = el("button","slide-del","Remove slide");
+    var del = el("button","slide-del",tr("removeSlide"));
     del.onclick=function(){ S.slides.splice(i,1); if(S.open>=S.slides.length) S.open=S.slides.length-1; save(); render(); };
     row.appendChild(del);
     pad.appendChild(row);
@@ -643,12 +779,12 @@ function stepNotes(){
   });
   p.appendChild(wallet);
 
-  var add = el("button","btn ghost","Add a slide");
+  var add = el("button","btn ghost",tr("addSlide"));
   add.onclick=function(){ S.slides.push({title:"",note:"",min:1}); S.open = S.slides.length-1; save(); render(); };
   p.appendChild(add);
 
   var act = el("div","actions");
-  var go = el("button","btn accent","Go to the clock");
+  var go = el("button","btn accent",tr("toClock"));
   go.onclick=function(){ set({step:2, cur:0, running:false, accMs:0, slideStartMs:0, everStarted:false}); };
   act.appendChild(go);
   p.appendChild(act);
@@ -673,25 +809,25 @@ function buildCard(i, live, ctl){
   var ttl = el("div","pcard-title", (sl.title||"").trim());
   top.appendChild(ttl);
   var reset = el("button","resetbtn","\u21BA");
-  reset.setAttribute("aria-label","Reset the clock");
+  reset.setAttribute("aria-label",tr("resetClock"));
   if (ctl) reset.onclick = ctl.onReset; else reset.tabIndex = -1;
   top.appendChild(reset);
   card.appendChild(top);
 
-  card.appendChild(el("div","ring-cap","Left on this slide"));
+  card.appendChild(el("div","ring-cap",tr("leftOnSlide")));
 
   var row = el("div","ringrow");
   var prev = el("button","ringnav prev","\u2190");
-  prev.setAttribute("aria-label","Previous slide");
+  prev.setAttribute("aria-label",tr("prevSlide"));
   prev.disabled = (i === 0);
   if (ctl) prev.onclick = ctl.onPrev; else prev.tabIndex = -1;
   var next = el("button","ringnav next","\u2192");
-  next.setAttribute("aria-label","Next slide");
+  next.setAttribute("aria-label",tr("nextSlide"));
   next.disabled = (i === S.slides.length-1);
   if (ctl) next.onclick = ctl.onNext; else next.tabIndex = -1;
 
   var ringbtn = el("button","ringbtn");
-  ringbtn.setAttribute("aria-label","Start or pause the clock");
+  ringbtn.setAttribute("aria-label",tr("ringBtn"));
   if (ctl) ringbtn.onclick = ctl.onToggle; else ringbtn.tabIndex = -1;
 
   var rw = el("div","ringwrap");
@@ -710,7 +846,7 @@ function buildCard(i, live, ctl){
   rw.appendChild(svg);
   var rc = el("div","ring-center");
   var rtime = el("div","ring-time", fmt(sl.min*60000));
-  var rsub = el("div","ring-sub","of "+fmt(sl.min*60000));
+  var rsub = el("div","ring-sub",tr("ofTime", fmt(sl.min*60000)));
   rc.appendChild(rtime); rc.appendChild(rsub);
   rw.appendChild(rc);
   ringbtn.appendChild(rw);
@@ -720,14 +856,14 @@ function buildCard(i, live, ctl){
 
   var note = el("div","pnote");
   if ((sl.note||"").trim()) note.textContent = sl.note;
-  else { note.className="pnote empty"; note.textContent="No note for this slide."; }
+  else { note.className="pnote empty"; note.textContent=tr("noNote"); }
   card.appendChild(note);
 
   var gauges = el("div","gauges");
-  var gT = el("div","gauge"); gT.appendChild(el("span","k","Overall left"));
+  var gT = el("div","gauge"); gT.appendChild(el("span","k",tr("overallLeft")));
   var gTv = el("span","v", fmt(totalMs()-elapsedMs())); gT.appendChild(gTv);
-  var gD = el("div","gauge"); gD.appendChild(el("span","k","Pace"));
-  var gDv = el("span","v", S.everStarted ? "On time" : "Not started"); gD.appendChild(gDv);
+  var gD = el("div","gauge"); gD.appendChild(el("span","k",tr("pace")));
+  var gDv = el("span","v", S.everStarted ? tr("onTime") : tr("notStarted")); gD.appendChild(gDv);
   gauges.appendChild(gT); gauges.appendChild(gD);
   card.appendChild(gauges);
 
@@ -738,8 +874,8 @@ function buildCard(i, live, ctl){
 function stepPresent(){
   var p = el("section","step");
   if (!S.slides.length){
-    p.appendChild(el("p","sub","No slides yet."));
-    var b0 = el("button","btn","Back to setup"); b0.onclick=function(){ set({step:0}); };
+    p.appendChild(el("p","sub",tr("noSlides")));
+    var b0 = el("button","btn",tr("backSetup")); b0.onclick=function(){ set({step:0}); };
     p.appendChild(b0);
     return p;
   }
@@ -778,14 +914,14 @@ function stepPresent(){
 
   var nx = el("button","nextup");
   if (i < N-1){
-    nx.appendChild(el("span","nextup-k","Next \u00b7 "+(i+2)));
-    nx.appendChild(el("span","nextup-t", labelFor(S.slides[i+1]) || "Untitled"));
+    nx.appendChild(el("span","nextup-k", tr("nextN", i+2)));
+    nx.appendChild(el("span","nextup-t", labelFor(S.slides[i+1]) || tr("nothingWritten")));
     nx.appendChild(el("span","nextup-a","\u2192"));
     nx.onclick=function(){ settle(-1); };
   } else {
     nx.disabled = true;
-    nx.appendChild(el("span","nextup-k","End"));
-    nx.appendChild(el("span","nextup-t","Last slide \u2014 stop talking"));
+    nx.appendChild(el("span","nextup-k",tr("end")));
+    nx.appendChild(el("span","nextup-t",tr("lastSlide")));
   }
   frame.appendChild(nx);
 
@@ -794,7 +930,7 @@ function stepPresent(){
     dots = el("div","dots");
     S.slides.forEach(function(_,j){
       var d = el("button","dot"+(j<i?" done":""));
-      d.setAttribute("aria-label","Slide "+(j+1));
+      d.setAttribute("aria-label",tr("slideN", j+1));
       d.setAttribute("aria-current", String(j===i));
       d.onclick=function(){ goSlide(j); };
       dots.appendChild(d);
@@ -919,23 +1055,23 @@ function stepPresent(){
 
     var planned = plannedBefore(i) + Math.min(onThis, budget);
     var drift = e - planned;
-    if (!S.everStarted){ P.gDv.textContent="Not started"; P.gD.className="gauge"; }
-    else if (Math.abs(drift) < 5000){ P.gDv.textContent="On time"; P.gD.className="gauge"; }
-    else if (drift > 0){ P.gDv.textContent=fmt(drift)+" behind"; P.gD.className="gauge behind"; }
-    else { P.gDv.textContent=fmt(-drift)+" ahead"; P.gD.className="gauge ahead"; }
+    if (!S.everStarted){ P.gDv.textContent=tr("notStarted"); P.gD.className="gauge"; }
+    else if (Math.abs(drift) < 5000){ P.gDv.textContent=tr("onTime"); P.gD.className="gauge"; }
+    else if (drift > 0){ P.gDv.textContent=tr("behind", fmt(drift)); P.gD.className="gauge behind"; }
+    else { P.gDv.textContent=tr("ahead", fmt(-drift)); P.gD.className="gauge ahead"; }
 
     if (!S.everStarted){
-      P.rsub.textContent = "Tap to start";
+      P.rsub.textContent = tr("tapStart");
       P.rsub.className = "ring-sub go";
-      P.ring.setAttribute("aria-label","Start the clock");
+      P.ring.setAttribute("aria-label",tr("startClock"));
     } else if (S.running){
-      P.rsub.textContent = "of " + fmt(budget);
+      P.rsub.textContent = tr("ofTime", fmt(budget));
       P.rsub.className = "ring-sub";
-      P.ring.setAttribute("aria-label","Pause the clock");
+      P.ring.setAttribute("aria-label",tr("pauseClock"));
     } else {
-      P.rsub.textContent = "Paused \u00b7 tap to go";
+      P.rsub.textContent = tr("pausedTap");
       P.rsub.className = "ring-sub go";
-      P.ring.setAttribute("aria-label","Resume the clock");
+      P.ring.setAttribute("aria-label",tr("resumeClock"));
     }
   }
   tick();
@@ -969,7 +1105,7 @@ function suggestSplit(host){
   if (!sampleFn) return;
   var think = el("div","thinking");
   think.appendChild(el("span","blip"));
-  think.appendChild(el("span","","Reading your notes…"));
+  think.appendChild(el("span","",tr("reading")));
   host.replaceWith(think);
 
   var body = S.slides.map(function(s,i){
@@ -1005,39 +1141,61 @@ function suggestSplit(host){
     }
     save(); render();
   }).catch(function(e){
-    var msg = (e && e.code==="not_granted")
-      ? "You have not allowed this page to call Claude. Use Split evenly and adjust by hand."
-      : (e && e.code==="rate_limited")
-        ? "Too many requests in a row. Wait a few seconds."
-        : "That did not come back cleanly. Use Split evenly and adjust by hand.";
+    var msg = (e && e.code==="not_granted") ? tr("errNotGranted")
+            : (e && e.code==="rate_limited") ? tr("errRate")
+            : tr("errGeneric");
     think.replaceWith(el("div","err", msg));
   });
 }
 
 /* ---------- example ---------- */
+var DEMO = {
+en: {
+  title:"FTIR grip-force rig \u2014 group meeting",
+  slides:[
+    {min:1,   title:"Title", note:"Say the one line: contact area tracks grip force, but the mirror still crops what we can see."},
+    {min:1.5, title:"Where we stopped", note:"Last time the handle imaged fine, but the contact region was cut off at the edges."},
+    {min:1,   title:"The question", note:"Can contact area stand in for grip force? That is what today answers."},
+    {min:2,   title:"Optics change", note:"Principal plane sits TTL minus f behind the lens front. Recomputed the field of view over the 100 mm path."},
+    {min:1.5, title:"Magnification check", note:"Checked against a ruler photo, not assumed from a pinhole model. Show the ruler frame."},
+    {min:2.5, title:"Main result", note:"Contact area rises monotonically with grip force, all three participants. Walk the curve, do not read the axes aloud."},
+    {min:1.5, title:"Vignetting", note:"Name it before anyone asks \u2014 the f/1.9 aperture bundle gets clipped by the mirror."},
+    {min:1.5, title:"What is missing", note:"The slope of area against force, and its uncertainty. Say this plainly."},
+    {min:1.5, title:"Two ways forward", note:"A bigger mirror, or a lens with a shorter total track length."},
+    {min:1,   title:"Close", note:"The direction I want agreement on this week. Then stop talking."}
+  ]
+},
+zh: {
+  title:"FTIR \u6293\u63e1\u529b\u91cf\u6e2c \u2014\u2014 \u7d44\u6703\u5831\u544a",
+  slides:[
+    {min:1,   title:"\u6a19\u984c", note:"\u5148\u8b1b\u90a3\u4e00\u53e5\uff1a\u63a5\u89f8\u9762\u7a4d\u8ddf\u5f97\u4e0a\u6293\u63e1\u529b\uff0c\u4f46\u93e1\u9762\u9084\u662f\u5207\u6389\u4e86\u4e00\u90e8\u5206\u8996\u91ce\u3002"},
+    {min:1.5, title:"\u4e0a\u6b21\u505c\u5728\u54ea", note:"\u624b\u628a\u6210\u50cf\u6c92\u554f\u984c\uff0c\u4f46\u63a5\u89f8\u5340\u7684\u908a\u7de3\u88ab\u5207\u6389\u4e86\u3002"},
+    {min:1,   title:"\u4eca\u5929\u7684\u554f\u984c", note:"\u63a5\u89f8\u9762\u7a4d\u80fd\u4e0d\u80fd\u7576\u6210\u6293\u63e1\u529b\u7684\u4ee3\u7406\u91cf\uff1f"},
+    {min:2,   title:"\u5149\u5b78\u4fee\u6b63", note:"\u4e3b\u5e73\u9762\u5728\u93e1\u982d\u524d\u7aef\u5f8c\u65b9 TTL \u6e1b f\u3002\u91cd\u65b0\u7b97\u4e86 100 mm \u8def\u5f91\u7684\u8996\u91ce\u3002"},
+    {min:1.5, title:"\u653e\u5927\u7387\u9a57\u8b49", note:"\u7528\u76f4\u5c3a\u7167\u7247\u5be6\u6e2c\uff0c\u4e0d\u662f\u7528\u91dd\u5b54\u6a21\u578b\u4f30\u3002\u8a18\u5f97\u653e\u90a3\u5f35\u76f4\u5c3a\u5716\u3002"},
+    {min:2.5, title:"\u4e3b\u8981\u7d50\u679c", note:"\u4e09\u4f4d\u53d7\u8a66\u8005\u7684\u63a5\u89f8\u9762\u7a4d\u90fd\u96a8\u6293\u63e1\u529b\u55ae\u8abf\u4e0a\u5347\u3002\u5e36\u8457\u4ed6\u5011\u770b\u66f2\u7dda\uff0c\u4e0d\u8981\u5ff5\u5ea7\u6a19\u8ef8\u3002"},
+    {min:1.5, title:"\u6697\u89d2", note:"\u5728\u88ab\u554f\u4e4b\u524d\u81ea\u5df1\u8b1b \u2014\u2014 f/1.9 \u7684\u5149\u5708\u5149\u675f\u88ab\u93e1\u9762\u5207\u5230\u4e86\u3002"},
+    {min:1.5, title:"\u9084\u7f3a\u4ec0\u9ebc", note:"\u9762\u7a4d\u5c0d\u529b\u7684\u659c\u7387\uff0c\u4ee5\u53ca\u5b83\u7684\u4e0d\u78ba\u5b9a\u5ea6\u3002\u76f4\u63a5\u8aaa\u51fa\u4f86\u3002"},
+    {min:1.5, title:"\u5169\u689d\u8def", note:"\u63db\u66f4\u5927\u7684\u93e1\u9762\uff0c\u6216\u63db\u7e3d\u9577\u66f4\u77ed\u7684\u93e1\u982d\u3002"},
+    {min:1,   title:"\u6536\u5c3e", note:"\u8aaa\u51fa\u9019\u9031\u60f3\u8b93\u5927\u5bb6\u540c\u610f\u7684\u65b9\u5411\uff0c\u7136\u5f8c\u505c\u4e0b\u4f86\u3002"}
+  ]
+}
+};
+
 function loadDemo(){
+  var d = DEMO[LANG] || DEMO.en;
   set({
-    step:1, open:0, title:"FTIR grip-force rig — group meeting", totalMin:15, cur:0,
+    demo:true, step:1, open:0, title:d.title, totalMin:15, cur:0,
     running:false, accMs:0, slideStartMs:0, everStarted:false,
-    slides:[
-      {min:1,   title:"Title", note:"Say the one line: contact area tracks grip force, but the mirror still crops what we can see."},
-      {min:1.5, title:"Where we stopped", note:"Last time the handle imaged fine, but the contact region was cut off at the edges."},
-      {min:1,   title:"The question", note:"Can contact area stand in for grip force? That is what today answers."},
-      {min:2,   title:"Optics change", note:"Principal plane sits TTL minus f behind the lens front. Recomputed the field of view over the 100 mm path."},
-      {min:1.5, title:"Magnification check", note:"Checked against a ruler photo, not assumed from a pinhole model. Show the ruler frame."},
-      {min:2.5, title:"Main result", note:"Contact area rises monotonically with grip force, all three participants. Walk the curve, do not read the axes aloud."},
-      {min:1.5, title:"Vignetting", note:"Name it before anyone asks \u2014 the f/1.9 aperture bundle gets clipped by the mirror."},
-      {min:1.5, title:"What is missing", note:"The slope of area against force, and its uncertainty. Say this plainly."},
-      {min:1.5, title:"Two ways forward", note:"A bigger mirror, or a lens with a shorter total track length."},
-      {min:1,   title:"Close", note:"The direction I want agreement on this week. Then stop talking."}
-    ]
+    slides: d.slides.map(function(x){ return {min:x.min, title:x.title, note:x.note}; })
   });
 }
 
-/* ---------- render ---------- */
 var lastStep = -1, navBuilt = false;
 function render(){
   clearInterval(ticker); ticker=null; keyNav=null; fitPresent=null;
+  renderLangSel();
+  document.documentElement.lang = (LANG === "zh" ? "zh-Hant" : "en");
   document.body.classList.toggle("presenting", S.step === 2);
   if (!navBuilt){ buildNav(); navBuilt = true; }
   var stage = document.getElementById("stage");
@@ -1054,12 +1212,24 @@ render();
 </script>
 
 <div id="install" hidden>
-  <span>To keep it on your phone: tap <b>Share</b>, then <b>Add to Home Screen</b>.</span>
+  <span id="install-msg"></span>
   <button type="button" aria-label="Dismiss">&times;</button>
 </div>
 <script>
 (function(){
   var box = document.getElementById("install");
+  var zh = false;
+  try { zh = (localStorage.getItem("sc_lang") || (/^zh/i.test(navigator.language||"") ? "zh" : "en")) === "zh"; } catch(e){
+    zh = /^zh/i.test(navigator.language||"");
+  }
+  function msg(isZh){
+    document.getElementById("install-msg").innerHTML = isZh
+      ? "要裝到手機上：點 <b>分享</b>，再選 <b>加入主畫面</b>。"
+      : "To keep it on your phone: tap <b>Share</b>, then <b>Add to Home Screen</b>.";
+  }
+  msg(zh);
+  /* the app tells the page when the language changes */
+  document.addEventListener("sc:lang", function(e){ msg(e.detail === "zh"); });
   var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
                    || window.navigator.standalone === true;
   var ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
