@@ -136,6 +136,23 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border
 .stepval{font-family:var(--display);font-weight:800;font-size:clamp(46px,13vw,64px);letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums;min-width:2.2ch;text-align:center}
 .stepunit{font-family:var(--mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
 
+/* ---------- import ---------- */
+.importrow{display:flex;flex-direction:column;gap:9px}
+.filebtn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:1px dashed var(--ink-3);background:transparent;color:var(--ink);
+  border-radius:99px;padding:13px 20px;cursor:pointer;font-size:16px;font-weight:600;
+  width:100%;
+}
+.filebtn:hover{border-color:var(--accent);color:var(--accent)}
+.filebtn input{display:none}
+.importmsg{font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.importmsg.bad{color:var(--accent)}
+.wthumb{
+  width:100%;border-radius:10px;border:1px solid var(--rule);
+  display:block;background:var(--paper);
+}
+
 /* ---------- budget ---------- */
 .budget{position:sticky;top:0;z-index:4;background:var(--paper);padding:12px 0 14px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--rule)}
 .budget-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
@@ -378,6 +395,12 @@ en: {
   totalLab:"Total time", minN:function(m){return m+" min";},
   totalHint:"Everything downstream is measured against this number.",
   toNotes:"Write the notes", demo:"No time? Load a filled-in example",
+  importLab:"Or start from your deck", importBtn:"Import a PDF",
+  importHint:"PowerPoint or Keynote: export as PDF first. The file is read on your own device and never uploaded.",
+  importReading:function(a,b){return "Reading page "+a+" of "+b+"\u2026";},
+  importDone:function(n){return n+" slides imported. Titles came from your deck \u2014 the notes are yours to write.";},
+  importFail:"That file could not be read. Is it a PDF?",
+  slidePreview:"Slide preview",
   fewer:"One slide fewer", more:"One slide more",
 
   notesH:"What do you say on each slide?",
@@ -418,6 +441,12 @@ zh: {
   totalLab:"\u7e3d\u6642\u9593", minN:function(m){return m+" \u5206";},
   totalHint:"\u5f8c\u9762\u6bcf\u4e00\u4ef6\u4e8b\u90fd\u4ee5\u9019\u500b\u6578\u5b57\u70ba\u6e96\u3002",
   toNotes:"\u958b\u59cb\u5beb\u8b1b\u7a3f", demo:"\u6c92\u7a7a\u586b\uff1f\u8f09\u5165\u4e00\u4efd\u586b\u597d\u7684\u7bc4\u4f8b",
+  importLab:"\u6216\u8005\u5f9e\u4f60\u7684\u7c21\u5831\u958b\u59cb", importBtn:"\u532f\u5165 PDF",
+  importHint:"PowerPoint \u6216 Keynote \u8acb\u5148\u532f\u51fa\u6210 PDF\u3002\u6a94\u6848\u5728\u4f60\u81ea\u5df1\u7684\u88dd\u7f6e\u4e0a\u8b80\u53d6\uff0c\u4e0d\u6703\u4e0a\u50b3\u3002",
+  importReading:function(a,b){return "\u6b63\u5728\u8b80\u7b2c "+a+" \u9801\uff0c\u5171 "+b+" \u9801\u2026";},
+  importDone:function(n){return "\u5df2\u532f\u5165 "+n+" \u9801\u3002\u6a19\u984c\u4f86\u81ea\u4f60\u7684\u7c21\u5831 \u2014\u2014 \u8b1b\u7a3f\u8981\u4f60\u81ea\u5df1\u5beb\u3002";},
+  importFail:"\u9019\u500b\u6a94\u6848\u8b80\u4e0d\u4e86\u3002\u78ba\u5b9a\u662f PDF \u55ce\uff1f",
+  slidePreview:"\u6295\u5f71\u7247\u7e2e\u5716",
   fewer:"\u5c11\u4e00\u9801", more:"\u591a\u4e00\u9801",
 
   notesH:"\u6bcf\u4e00\u9801\u4f60\u8981\u8b1b\u4ec0\u9ebc\uff1f",
@@ -499,6 +528,43 @@ try { var raw = localStorage.getItem(LS); if (raw) S = Object.assign(blank(), JS
 S.slides.forEach(function(sl){ if (typeof sl.title !== "string") sl.title = ""; });
 function save(){ try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){} }
 function set(patch){ Object.assign(S, patch); save(); render(); }
+
+/* Page images are far too big for localStorage, so they live in IndexedDB
+   and the deck state keeps only text. */
+var THUMBS = [];
+var _db = null;
+function idb(){
+  if (_db) return Promise.resolve(_db);
+  return new Promise(function(res, rej){
+    try {
+      var r = indexedDB.open("slideclock", 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore("kv"); };
+      r.onsuccess = function(){ _db = r.result; res(_db); };
+      r.onerror = function(){ rej(r.error); };
+    } catch(e){ rej(e); }
+  });
+}
+function idbPut(k, v){
+  return idb().then(function(db){
+    return new Promise(function(res, rej){
+      var t = db.transaction("kv","readwrite");
+      t.objectStore("kv").put(v, k);
+      t.oncomplete = function(){ res(); };
+      t.onerror = function(){ rej(t.error); };
+    });
+  });
+}
+function idbGet(k){
+  return idb().then(function(db){
+    return new Promise(function(res, rej){
+      var t = db.transaction("kv","readonly");
+      var q = t.objectStore("kv").get(k);
+      q.onsuccess = function(){ res(q.result); };
+      q.onerror = function(){ rej(q.error); };
+    });
+  });
+}
+idbGet("thumbs").then(function(v){ if (Array.isArray(v)){ THUMBS = v; if (S.step===1) render(); } }).catch(function(){});
 
 var sampleFn = null, sampleResolved = false;
 if (typeof window.claude !== "undefined" && window.claude.use){
@@ -630,6 +696,40 @@ function stepSetup(){
   f1.appendChild(quick);
   p.appendChild(f1);
 
+  var fim = el("div","field importrow");
+  fim.appendChild(el("span","lab",tr("importLab")));
+  var flab = el("label","filebtn");
+  flab.appendChild(document.createTextNode(tr("importBtn")));
+  var fin = el("input");
+  fin.type = "file";
+  fin.accept = "application/pdf,.pdf";
+  flab.appendChild(fin);
+  fim.appendChild(flab);
+  var fmsg = el("div","importmsg", tr("importHint"));
+  fim.appendChild(fmsg);
+  fin.onchange = function(){
+    var f = fin.files && fin.files[0];
+    if (!f) return;
+    fmsg.className = "importmsg";
+    fmsg.textContent = tr("importReading", 1, "?");
+    importPdf(f, function(a,b){ fmsg.textContent = tr("importReading", a, b); })
+      .then(function(r){
+        THUMBS = r.thumbs;
+        idbPut("thumbs", r.thumbs).catch(function(){});
+        importNote = tr("importDone", r.slides.length);
+        S.slides = r.slides;
+        S.demo = false;
+        S.open = 0;
+        splitEvenly();
+        set({step:1});
+      })
+      .catch(function(){
+        fmsg.textContent = tr("importFail");
+        fmsg.className = "importmsg bad";
+      });
+  };
+  p.appendChild(fim);
+
   var f2 = el("div","field");
   f2.appendChild(el("span","lab",tr("totalLab")));
   var mins = el("div","pillrow");
@@ -700,6 +800,11 @@ function stepNotes(){
   track.appendChild(fill); bud.appendChild(track);
   p.appendChild(bud);
 
+  if (importNote){
+    p.appendChild(el("div","importmsg", importNote));
+    importNote = null;
+  }
+
   function refreshBudget(){
     var a = allocatedMs(), t = totalMs();
     fig.textContent = tr("allocated", fmt(a), fmt(t));
@@ -760,6 +865,13 @@ function stepNotes(){
       if (S.open === i) setTimeout(function(){ try{ (ti.value ? ta : ti).focus({preventScroll:true}); }catch(e){} }, 240);
     };
 
+    if (THUMBS[i]){
+      var th = el("img","wthumb");
+      th.src = THUMBS[i];
+      th.alt = tr("slidePreview");
+      th.loading = "lazy";
+      pad.appendChild(th);
+    }
     pad.appendChild(ti);
     pad.appendChild(ta);
 
@@ -1153,6 +1265,86 @@ function suggestSplit(host){
   });
 }
 
+/* ---------- importing a deck ----------
+   pdf.js is fetched only when someone actually imports, so the app still
+   opens with no network. Everything happens on the device: the file is
+   never uploaded.
+
+   Only the page's own heading becomes the slide title. The rest of the
+   text on the slide is deliberately NOT poured into the note - those are
+   the words on the screen, not the words you say, and putting them in the
+   note is how people end up reading their slides aloud. */
+var PDF_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+var PDF_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+function loadPdfJs(){
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  return new Promise(function(res, rej){
+    var sc = document.createElement("script");
+    sc.src = PDF_SRC;
+    sc.onload = function(){
+      if (!window.pdfjsLib) return rej(new Error("no pdfjsLib"));
+      try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER; } catch(e){}
+      res(window.pdfjsLib);
+    };
+    sc.onerror = function(){ rej(new Error("script")); };
+    document.head.appendChild(sc);
+  });
+}
+
+function titleFromText(items){
+  /* the first line with real words on it, which on almost every deck is
+     the slide's own heading */
+  var lines = [], last = null;
+  items.forEach(function(it){
+    var y = Math.round((it.transform && it.transform[5]) || 0);
+    if (last === null || Math.abs(y - last) > 4){ lines.push(it.str); last = y; }
+    else { lines[lines.length-1] += it.str; }
+  });
+  for (var i=0;i<lines.length;i++){
+    var line = lines[i].replace(/\s+/g," ").trim();
+    if (line.length >= 2 && /[^\s\d.\-\u2022]/.test(line)){
+      return line.length > 70 ? line.slice(0,70).trim() + "\u2026" : line;
+    }
+  }
+  return "";
+}
+
+function importPdf(file, onProgress){
+  return loadPdfJs().then(function(pdfjsLib){
+    return file.arrayBuffer();
+  }).then(function(buf){
+    return window.pdfjsLib.getDocument({data: buf}).promise;
+  }).then(function(doc){
+    var n = doc.numPages, slides = [], thumbs = [];
+    var chain = Promise.resolve();
+    for (var i=1;i<=n;i++){
+      (function(page){
+        chain = chain.then(function(){
+          if (onProgress) onProgress(page, n);
+          return doc.getPage(page).then(function(pg){
+            return pg.getTextContent().then(function(tc){
+              var title = titleFromText(tc.items || []);
+              slides.push({title:title, note:"", min:1});
+              var vp = pg.getViewport({scale:1});
+              var scale = Math.min(2, 560 / vp.width);
+              var v2 = pg.getViewport({scale:scale});
+              var cv = document.createElement("canvas");
+              cv.width = Math.ceil(v2.width); cv.height = Math.ceil(v2.height);
+              return pg.render({canvasContext: cv.getContext("2d"), viewport: v2}).promise
+                .then(function(){
+                  try { thumbs.push(cv.toDataURL("image/jpeg", 0.72)); }
+                  catch(e){ thumbs.push(""); }
+                });
+            });
+          });
+        });
+      })(i);
+    }
+    return chain.then(function(){ return {slides:slides, thumbs:thumbs}; });
+  });
+}
+
 /* ---------- example ---------- */
 var DEMO = {
 en: {
@@ -1196,6 +1388,7 @@ function loadDemo(){
   });
 }
 
+var importNote = null;
 var lastStep = -1, navBuilt = false;
 function render(){
   clearInterval(ticker); ticker=null; keyNav=null; fitPresent=null;

@@ -1,8 +1,8 @@
-/* Slide Clock service worker - build f0572a0633
+/* Slide Clock service worker - build bc4d0193d3
    The app has to work in a room with no usable wifi, so the shell is
    cached on install and served from cache first. Fonts are cached as
    they are fetched; if they never are, the fallback stack carries it. */
-var CACHE = "slide-clock-f0572a0633";
+var CACHE = "slide-clock-bc4d0193d3";
 var SHELL = ["./","./index.html","./manifest.webmanifest",
              "./icon-192.png","./icon-512.png","./icon-maskable-512.png",
              "./apple-touch-icon.png","./favicon.png"];
@@ -24,7 +24,8 @@ self.addEventListener("fetch", function(e){
   var url = new URL(req.url);
   var sameOrigin = url.origin === self.location.origin;
   var isFont = url.host === "fonts.googleapis.com" || url.host === "fonts.gstatic.com";
-  if (!sameOrigin && !isFont) return;
+  var isLib  = url.host === "cdnjs.cloudflare.com";   /* pdf.js, fetched on first import */
+  if (!sameOrigin && !isFont && !isLib) return;
 
   e.respondWith(caches.match(req).then(function(hit){
     var net = fetch(req).then(function(res){
