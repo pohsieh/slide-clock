@@ -499,7 +499,7 @@ en: {
   noAudio:"No audio for this run.",
   lastRun:function(d){return "Last rehearsal: "+d;},
   reviewLink:"See the last rehearsal", notReached:"never reached",
-  recReady:"Microphone on \u2014 this run will be recorded",
+  recReady:"Microphone on", recWill:"This run will be recorded",
   recNotArmed:"This run was not recorded. Tap the dot beside the slide number before you start.",
   recEmpty:"The microphone was on, but nothing was captured.",
   playSlide:"Play this slide", playingNow:"Playing",
@@ -563,7 +563,7 @@ zh: {
   noAudio:"\u9019\u6b21\u6c92\u6709\u9304\u5230\u97f3\u3002",
   lastRun:function(d){return "\u4e0a\u6b21\u7df4\u7fd2\uff1a"+d;},
   reviewLink:"\u770b\u4e0a\u6b21\u7df4\u7fd2\u7684\u7d50\u679c", notReached:"\u6c92\u8b1b\u5230",
-  recReady:"\u9ea5\u514b\u98a8\u5df2\u958b \u2014\u2014 \u9019\u6b21\u6703\u9304\u97f3",
+  recReady:"\u9ea5\u514b\u98a8\u5df2\u958b", recWill:"\u9019\u6b21\u6703\u9304\u97f3",
   recNotArmed:"\u9019\u6b21\u6c92\u6709\u9304\u97f3\u3002\u958b\u59cb\u524d\u8981\u5148\u9ede\u9801\u78bc\u65c1\u908a\u90a3\u500b\u5713\u9ede\u3002",
   recEmpty:"\u9ea5\u514b\u98a8\u6709\u958b\uff0c\u4f46\u6c92\u6709\u6536\u5230\u8072\u97f3\u3002",
   playSlide:"\u64ad\u653e\u9019\u4e00\u9801", playingNow:"\u64ad\u653e\u4e2d",
@@ -1273,11 +1273,14 @@ function stepPresent(){
         S.startedAt = Date.now(); S.running = true; requestWake();
         if (!S.everStarted){
           S.everStarted = true;
+          S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false, armed:!!recArmed};
           if (recArmed){
-            S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false, armed:true};
-            recStart();
-          } else {
-            S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false, armed:false};
+            /* this runs inside the tap, so the permission request is allowed */
+            recArm().then(function(ok){
+              if (ok) recStart();
+              else if (S.run){ S.run.armed = false; save(); }
+              render();
+            });
           }
         } else {
           recResume();
@@ -1333,12 +1336,16 @@ function stepPresent(){
   if (recSupported && (recArmed || (S.run && S.run.armed))){
     var chip = el("div","recchip");
     chip.appendChild(el("span","recdot"));
-    chip.appendChild(el("span","", tr(S.run ? "recOn" : "recReady")));
-    var lvl = el("span","reclevel");
-    for (var b=0;b<5;b++) lvl.appendChild(el("i"));
-    chip.appendChild(lvl);
-    frame.appendChild(chip);
-    levelAttach(lvl);
+    chip.appendChild(el("span","", tr(S.run ? "recOn" : (recStream ? "recReady" : "recWill"))));
+    if (recStream){
+      var lvl = el("span","reclevel");
+      for (var b=0;b<5;b++) lvl.appendChild(el("i"));
+      chip.appendChild(lvl);
+      frame.appendChild(chip);
+      levelAttach(lvl);
+    } else {
+      frame.appendChild(chip);
+    }
   } else if (recError === "denied"){
     frame.appendChild(el("div","importmsg bad", tr("micDenied")));
   }
@@ -1370,7 +1377,18 @@ function stepPresent(){
 
   /* ---- page turn: the track follows the finger, then settles ---- */
   var BASE = -33.3333, STEP = 33.3333;
-  var drag=false, locked=false, sx=0, sy=0, t0=0, settling=false;
+  var drag=false, locked=false, sx=0, sy=0, t0=0, settling=false, swallowClick=false;
+
+  /* A swipe usually starts in the middle of the card, which is where the ring
+     is - and the ring is the start/pause button. The browser sends a click
+     there when the finger lifts, so every page turn was also pausing the
+     clock. Eat that click. */
+  track.addEventListener("click", function(e){
+    if (!swallowClick) return;
+    swallowClick = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 
   function setX(px){
     track.style.transform = "translateX(calc(" + BASE + "% + " + px + "px))";
@@ -1397,7 +1415,7 @@ function stepPresent(){
   track.addEventListener("pointerdown", function(e){
     if (settling) return;
     if (e.pointerType==="mouse" && e.button!==0) return;
-    sx=e.clientX; sy=e.clientY; t0=Date.now(); drag=true; locked=false;
+    sx=e.clientX; sy=e.clientY; t0=Date.now(); drag=true; locked=false; swallowClick=false;
     track.style.transition="none";
   });
   track.addEventListener("pointermove", function(e){
@@ -1406,7 +1424,7 @@ function stepPresent(){
     if(!locked){
       if(Math.abs(dx)<8 && Math.abs(dy)<8) return;
       if(Math.abs(dy)>Math.abs(dx)){ drag=false; setX(0); return; }
-      locked=true;
+      locked=true; swallowClick=true;
     }
     var edge = (dx>0 && i===0) || (dx<0 && i===N-1);
     setX(edge ? dx*0.18 : dx);
@@ -1567,7 +1585,12 @@ function suggestSplit(host){
    the most recent run is kept. */
 var recSupported = (typeof MediaRecorder !== "undefined") &&
                    !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-var recArmed = false, recorder = null, recChunks = [], recStream = null, recError = null;
+/* Recording is on unless it has been turned off: pressing start should be
+   the whole gesture. The dot turns it off, not on. */
+var recArmed = true;
+try { recArmed = localStorage.getItem("sc_rec") !== "off"; } catch(e){}
+var recorder = null, recChunks = [], recStream = null, recError = null;
+function recRemember(){ try { localStorage.setItem("sc_rec", recArmed ? "on" : "off"); } catch(e){} }
 
 /* Permission is requested when you arm, not when you start. Asking at the
    moment the clock starts puts a system dialog in front of someone who is
@@ -1575,10 +1598,11 @@ var recArmed = false, recorder = null, recChunks = [], recStream = null, recErro
    which is exactly what happened. */
 function recArm(){
   if (!recSupported){ recError = "unsupported"; return Promise.resolve(false); }
+  if (recStream) return Promise.resolve(true);
   return navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
-    recStream = stream; recArmed = true; recError = null; return true;
+    recStream = stream; recArmed = true; recError = null; recRemember(); return true;
   }).catch(function(){
-    recStream = null; recArmed = false; recError = "denied"; return false;
+    recStream = null; recArmed = false; recError = "denied"; recRemember(); return false;
   });
 }
 /* Permission granted is not the same as the microphone hearing anything.
@@ -1624,6 +1648,7 @@ function levelDetach(){
 
 function recDisarm(){
   levelDetach();
+  recRemember();
   try { if (recStream) recStream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){}
   recStream = null; recArmed = false; recError = null;
 }
