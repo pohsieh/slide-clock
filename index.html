@@ -482,7 +482,7 @@ en: {
   seekHint:"Tap a slide to hear that part of the recording.",
   noAudio:"No audio for this run.",
   lastRun:function(d){return "Last rehearsal: "+d;},
-  reviewLink:"See the last rehearsal",
+  reviewLink:"See the last rehearsal", notReached:"never reached",
   errNotGranted:"You have not allowed this page to call Claude. Use Split evenly and adjust by hand.",
   errRate:"Too many requests in a row. Wait a few seconds.",
   errGeneric:"That did not come back cleanly. Use Split evenly and adjust by hand."
@@ -542,7 +542,7 @@ zh: {
   seekHint:"\u9ede\u4e00\u9801\u5c31\u8df3\u5230\u9304\u97f3\u7684\u90a3\u4e00\u6bb5\u3002",
   noAudio:"\u9019\u6b21\u6c92\u6709\u9304\u5230\u97f3\u3002",
   lastRun:function(d){return "\u4e0a\u6b21\u7df4\u7fd2\uff1a"+d;},
-  reviewLink:"\u770b\u4e0a\u6b21\u7df4\u7fd2\u7684\u7d50\u679c",
+  reviewLink:"\u770b\u4e0a\u6b21\u7df4\u7fd2\u7684\u7d50\u679c", notReached:"\u6c92\u8b1b\u5230",
   errNotGranted:"\u4f60\u6c92\u6709\u5141\u8a31\u9019\u500b\u9801\u9762\u547c\u53eb Claude\u3002\u8acb\u7528\u300c\u5e73\u5747\u5206\u914d\u300d\u518d\u624b\u52d5\u8abf\u3002",
   errRate:"\u53eb\u5f97\u592a\u983b\u7e41\u4e86\uff0c\u7b49\u5e7e\u79d2\u518d\u8a66\u3002",
   errGeneric:"\u9019\u6b21\u6c92\u6709\u6b63\u5e38\u56de\u4f86\u3002\u8acb\u7528\u300c\u5e73\u5747\u5206\u914d\u300d\u518d\u624b\u52d5\u8abf\u3002"
@@ -1125,14 +1125,17 @@ function buildReview(){
 
   var rows = el("div","rrows");
   S.slides.forEach(function(sl,i){
-    var plan = sl.min*60000, act = acc[i] || 0, d = act - plan;
+    var plan = sl.min*60000, seen = acc.hasOwnProperty(i), act = acc[i] || 0, d = act - plan;
     var r = el("button","rrow");
     r.appendChild(el("span","rn", String(i+1).padStart(2,"0")));
     var mid = el("span","rt", labelFor(sl) || tr("nothingYet"));
     r.appendChild(mid);
-    r.appendChild(el("span","rtimes", fmt(plan) + " \u2192 " + fmt(act)));
-    var dl = el("span","rdelta" + (Math.abs(d) < 5000 ? "" : (d > 0 ? " over" : " under")),
-                (d > 0 ? "+" : d < 0 ? "\u2212" : "") + fmt(Math.abs(d)));
+    r.appendChild(el("span","rtimes", seen ? (fmt(plan) + " \u2192 " + fmt(act)) : fmt(plan)));
+    /* a slide you never reached is not a slide you were quick on */
+    var dl = seen
+      ? el("span","rdelta" + (Math.abs(d) < 5000 ? "" : (d > 0 ? " over" : " under")),
+           (d > 0 ? "+" : d < 0 ? "\u2212" : "") + fmt(Math.abs(d)))
+      : el("span","rdelta", tr("notReached"));
     r.appendChild(dl);
     var first = (run.marks || []).filter(function(m){ return m.i === i; })[0];
     r.onclick = function(){
@@ -1149,8 +1152,8 @@ function buildReview(){
   var apply = el("button","btn accent", tr("applyTimes"));
   apply.onclick = function(){
     S.slides.forEach(function(sl,i){
-      var a = acc[i] || 0;
-      var m = Math.round((a/60000)*2)/2;
+      if (!acc.hasOwnProperty(i)) return;        /* leave untouched what you never reached */
+      var m = Math.round((acc[i]/60000)*2)/2;
       sl.min = Math.max(0.5, Math.min(30, m || 0.5));
     });
     S.totalMin = Math.max(1, Math.round((allocatedMs()/60000)*2)/2);
@@ -1206,7 +1209,8 @@ function stepPresent(){
     },
     onFinish: function(){
       releaseWake();
-      S.running = false;
+      if (S.running){ S.accMs = elapsedMs(); S.running = false; }   /* bank the time first */
+      recPause();
       finishRun().then(function(){ set({reviewing:true}); });
     },
     onReset:  function(){
