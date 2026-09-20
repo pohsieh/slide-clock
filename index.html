@@ -37,7 +37,12 @@ img{max-width:100%}
   font-size:13.5px;line-height:1.4;color:var(--ink,#111);
 }
 #install b{font-weight:600}
-#install button{
+#install-go{
+  flex-shrink:0;border:0;border-radius:99px;cursor:pointer;
+  background:var(--accent,#E8462A);color:var(--accent-ink,#fff);
+  font-size:13px;font-weight:600;padding:7px 14px;
+}
+#install-x{
   margin-left:auto;flex-shrink:0;border:0;background:transparent;
   color:var(--ink-3,#888);font-size:18px;line-height:1;cursor:pointer;padding:4px 2px;
 }
@@ -368,7 +373,7 @@ en: {
   setupH:"How many slides, and how long?",
   setupSub:"Two numbers. Then you write what you will say on each one.",
   talkLab:"What is the talk", talkPh:"Name it in a few words",
-  talkHint:"For example: First results from the FTIR grip-force rig",
+  talkHint:"For example: Why the campus bikes are never at the north gate",
   slidesLab:"Slides", slidesN:function(n){return n+" slides";}, pages:"pages",
   totalLab:"Total time", minN:function(m){return m+" min";},
   totalHint:"Everything downstream is measured against this number.",
@@ -408,7 +413,7 @@ zh: {
   setupH:"\u5e7e\u9801\u6295\u5f71\u7247\uff0c\u6709\u591a\u5c11\u6642\u9593\uff1f",
   setupSub:"\u5169\u500b\u6578\u5b57\u3002\u63a5\u8457\u5beb\u4e0b\u6bcf\u4e00\u9801\u4f60\u8981\u8b1b\u4ec0\u9ebc\u3002",
   talkLab:"\u9019\u5834\u7c21\u5831\u662f\u4ec0\u9ebc", talkPh:"\u7528\u5e7e\u500b\u5b57\u8aaa",
-  talkHint:"\u4f8b\u5982\uff1aFTIR \u6293\u63e1\u529b\u91cf\u6e2c\u7684\u7b2c\u4e00\u6279\u7d50\u679c",
+  talkHint:"\u4f8b\u5982\uff1a\u70ba\u4ec0\u9ebc\u5317\u9580\u6c38\u9060\u501f\u4e0d\u5230\u8173\u8e0f\u8eca",
   slidesLab:"\u6295\u5f71\u7247", slidesN:function(n){return n+" \u9801";}, pages:"\u9801",
   totalLab:"\u7e3d\u6642\u9593", minN:function(m){return m+" \u5206";},
   totalHint:"\u5f8c\u9762\u6bcf\u4e00\u4ef6\u4e8b\u90fd\u4ee5\u9019\u500b\u6578\u5b57\u70ba\u6e96\u3002",
@@ -1151,33 +1156,33 @@ function suggestSplit(host){
 /* ---------- example ---------- */
 var DEMO = {
 en: {
-  title:"FTIR grip-force rig \u2014 group meeting",
+  title:"Why the campus bikes are never at the north gate",
   slides:[
-    {min:1,   title:"Title", note:"Say the one line: contact area tracks grip force, but the mirror still crops what we can see."},
-    {min:1.5, title:"Where we stopped", note:"Last time the handle imaged fine, but the contact region was cut off at the edges."},
-    {min:1,   title:"The question", note:"Can contact area stand in for grip force? That is what today answers."},
-    {min:2,   title:"Optics change", note:"Principal plane sits TTL minus f behind the lens front. Recomputed the field of view over the 100 mm path."},
-    {min:1.5, title:"Magnification check", note:"Checked against a ruler photo, not assumed from a pinhole model. Show the ruler frame."},
-    {min:2.5, title:"Main result", note:"Contact area rises monotonically with grip force, all three participants. Walk the curve, do not read the axes aloud."},
-    {min:1.5, title:"Vignetting", note:"Name it before anyone asks \u2014 the f/1.9 aperture bundle gets clipped by the mirror."},
-    {min:1.5, title:"What is missing", note:"The slope of area against force, and its uncertainty. Say this plainly."},
-    {min:1.5, title:"Two ways forward", note:"A bigger mirror, or a lens with a shorter total track length."},
-    {min:1,   title:"Close", note:"The direction I want agreement on this week. Then stop talking."}
+    {min:1,   title:"Title", note:"Say the one line: the bikes are not missing. They are all parked at the end nobody starts from."},
+    {min:1.5, title:"The complaint", note:"Everyone says there is never a bike at the north gate at eight in the morning. Open with the complaint, not the data \u2014 they already believe the complaint."},
+    {min:1,   title:"What we measured", note:"Dock counts at all nine stations, every fifteen minutes, for two weeks."},
+    {min:2,   title:"The pattern", note:"Bikes pile up at the south end overnight and never come back. Put the heat map up and stop talking for a moment."},
+    {min:1.5, title:"Why it happens", note:"Most morning trips run downhill. Almost nobody rides back up. Say it plainly \u2014 this is the whole finding."},
+    {min:2.5, title:"What we tried", note:"Three rebalancing schedules, simulated against the real trip data. Walk through the assumptions before you show any numbers."},
+    {min:1.5, title:"The result", note:"One van, twice a day, cuts empty-station time by sixty per cent. This is the number to leave them with."},
+    {min:1.5, title:"What we are not claiming", note:"The simulation assumes demand stays as it is today. Say that yourself, before someone else says it for you."},
+    {min:1.5, title:"What it would cost", note:"One driver, one van \u2014 and the cost of doing nothing, which is what they will actually ask about."},
+    {min:1,   title:"The ask", note:"A four-week trial next semester. Then stop talking."}
   ]
 },
 zh: {
-  title:"FTIR \u6293\u63e1\u529b\u91cf\u6e2c \u2014\u2014 \u7d44\u6703\u5831\u544a",
+  title:"\u70ba\u4ec0\u9ebc\u5317\u9580\u6c38\u9060\u501f\u4e0d\u5230\u8173\u8e0f\u8eca",
   slides:[
-    {min:1,   title:"\u6a19\u984c", note:"\u5148\u8b1b\u90a3\u4e00\u53e5\uff1a\u63a5\u89f8\u9762\u7a4d\u8ddf\u5f97\u4e0a\u6293\u63e1\u529b\uff0c\u4f46\u93e1\u9762\u9084\u662f\u5207\u6389\u4e86\u4e00\u90e8\u5206\u8996\u91ce\u3002"},
-    {min:1.5, title:"\u4e0a\u6b21\u505c\u5728\u54ea", note:"\u624b\u628a\u6210\u50cf\u6c92\u554f\u984c\uff0c\u4f46\u63a5\u89f8\u5340\u7684\u908a\u7de3\u88ab\u5207\u6389\u4e86\u3002"},
-    {min:1,   title:"\u4eca\u5929\u7684\u554f\u984c", note:"\u63a5\u89f8\u9762\u7a4d\u80fd\u4e0d\u80fd\u7576\u6210\u6293\u63e1\u529b\u7684\u4ee3\u7406\u91cf\uff1f"},
-    {min:2,   title:"\u5149\u5b78\u4fee\u6b63", note:"\u4e3b\u5e73\u9762\u5728\u93e1\u982d\u524d\u7aef\u5f8c\u65b9 TTL \u6e1b f\u3002\u91cd\u65b0\u7b97\u4e86 100 mm \u8def\u5f91\u7684\u8996\u91ce\u3002"},
-    {min:1.5, title:"\u653e\u5927\u7387\u9a57\u8b49", note:"\u7528\u76f4\u5c3a\u7167\u7247\u5be6\u6e2c\uff0c\u4e0d\u662f\u7528\u91dd\u5b54\u6a21\u578b\u4f30\u3002\u8a18\u5f97\u653e\u90a3\u5f35\u76f4\u5c3a\u5716\u3002"},
-    {min:2.5, title:"\u4e3b\u8981\u7d50\u679c", note:"\u4e09\u4f4d\u53d7\u8a66\u8005\u7684\u63a5\u89f8\u9762\u7a4d\u90fd\u96a8\u6293\u63e1\u529b\u55ae\u8abf\u4e0a\u5347\u3002\u5e36\u8457\u4ed6\u5011\u770b\u66f2\u7dda\uff0c\u4e0d\u8981\u5ff5\u5ea7\u6a19\u8ef8\u3002"},
-    {min:1.5, title:"\u6697\u89d2", note:"\u5728\u88ab\u554f\u4e4b\u524d\u81ea\u5df1\u8b1b \u2014\u2014 f/1.9 \u7684\u5149\u5708\u5149\u675f\u88ab\u93e1\u9762\u5207\u5230\u4e86\u3002"},
-    {min:1.5, title:"\u9084\u7f3a\u4ec0\u9ebc", note:"\u9762\u7a4d\u5c0d\u529b\u7684\u659c\u7387\uff0c\u4ee5\u53ca\u5b83\u7684\u4e0d\u78ba\u5b9a\u5ea6\u3002\u76f4\u63a5\u8aaa\u51fa\u4f86\u3002"},
-    {min:1.5, title:"\u5169\u689d\u8def", note:"\u63db\u66f4\u5927\u7684\u93e1\u9762\uff0c\u6216\u63db\u7e3d\u9577\u66f4\u77ed\u7684\u93e1\u982d\u3002"},
-    {min:1,   title:"\u6536\u5c3e", note:"\u8aaa\u51fa\u9019\u9031\u60f3\u8b93\u5927\u5bb6\u540c\u610f\u7684\u65b9\u5411\uff0c\u7136\u5f8c\u505c\u4e0b\u4f86\u3002"}
+    {min:1,   title:"\u6a19\u984c", note:"\u5148\u8b1b\u90a3\u4e00\u53e5\uff1a\u8eca\u6c92\u6709\u4e0d\u898b\uff0c\u5b83\u5011\u5168\u505c\u5728\u6c92\u4eba\u5f9e\u90a3\u88e1\u51fa\u767c\u7684\u90a3\u4e00\u7aef\u3002"},
+    {min:1.5, title:"\u5927\u5bb6\u7684\u62b1\u6028", note:"\u6bcf\u500b\u4eba\u90fd\u8aaa\u65e9\u4e0a\u516b\u9ede\u5317\u9580\u6c92\u8eca\u3002\u5f9e\u62b1\u6028\u958b\u5834\uff0c\u4e0d\u8981\u5f9e\u6578\u64da \u2014\u2014 \u62b1\u6028\u4ed6\u5011\u5df2\u7d93\u76f8\u4fe1\u4e86\u3002"},
+    {min:1,   title:"\u6211\u5011\u6e2c\u4e86\u4ec0\u9ebc", note:"\u4e5d\u500b\u7ad9\u9ede\u3001\u6bcf\u5341\u4e94\u5206\u9418\u6578\u4e00\u6b21\u8eca\uff0c\u9023\u7e8c\u5169\u9031\u3002"},
+    {min:2,   title:"\u770b\u5230\u7684\u898f\u5f8b", note:"\u8eca\u6bcf\u5929\u591c\u88e1\u5806\u5728\u5357\u7aef\uff0c\u4e26\u4e14\u4e0d\u6703\u81ea\u5df1\u56de\u4f86\u3002\u628a\u71b1\u5716\u653e\u4e0a\u53bb\uff0c\u7136\u5f8c\u5148\u5225\u8aaa\u8a71\u3002"},
+    {min:1.5, title:"\u70ba\u4ec0\u9ebc\u6703\u9019\u6a23", note:"\u65e9\u4e0a\u5927\u90e8\u5206\u7684\u884c\u7a0b\u662f\u4e0b\u5761\uff0c\u5e7e\u4e4e\u6c92\u4eba\u9a0e\u56de\u53bb\u3002\u76f4\u63a5\u8aaa\u51fa\u4f86 \u2014\u2014 \u9019\u5c31\u662f\u6574\u500b\u767c\u73fe\u3002"},
+    {min:2.5, title:"\u6211\u5011\u8a66\u4e86\u4ec0\u9ebc", note:"\u4e09\u7a2e\u8abf\u5ea6\u65b9\u5f0f\uff0c\u7528\u771f\u5be6\u884c\u7a0b\u8cc7\u6599\u8dd1\u6a21\u64ec\u3002\u5148\u628a\u5047\u8a2d\u8b1b\u6e05\u695a\uff0c\u518d\u7d66\u4efb\u4f55\u6578\u5b57\u3002"},
+    {min:1.5, title:"\u7d50\u679c", note:"\u4e00\u53f0\u8eca\u3001\u4e00\u5929\u5169\u8d9f\uff0c\u7a7a\u7ad9\u6642\u9593\u6e1b\u5c11\u516d\u6210\u3002\u9019\u662f\u4f60\u8981\u8b93\u4ed6\u5011\u5e36\u8d70\u7684\u6578\u5b57\u3002"},
+    {min:1.5, title:"\u6211\u5011\u6c92\u8aaa\u7684\u4e8b", note:"\u6a21\u64ec\u5047\u8a2d\u9700\u6c42\u8ddf\u4eca\u5929\u4e00\u6a23\u3002\u81ea\u5df1\u8aaa\u51fa\u4f86\uff0c\u4e0d\u8981\u7b49\u5225\u4eba\u66ff\u4f60\u8aaa\u3002"},
+    {min:1.5, title:"\u8981\u82b1\u591a\u5c11\u9322", note:"\u4e00\u500b\u53f8\u6a5f\u3001\u4e00\u53f0\u8eca \u2014\u2014 \u4ee5\u53ca\u4ec0\u9ebc\u90fd\u4e0d\u505a\u7684\u4ee3\u50f9\uff0c\u90a3\u624d\u662f\u4ed6\u5011\u771f\u6b63\u6703\u554f\u7684\u3002"},
+    {min:1,   title:"\u6211\u7684\u8acb\u6c42", note:"\u4e0b\u5b78\u671f\u5148\u8a66\u8dd1\u56db\u9031\u3002\u7136\u5f8c\u505c\u4e0b\u4f86\u3002"}
   ]
 }
 };
@@ -1213,34 +1218,62 @@ render();
 
 <div id="install" hidden>
   <span id="install-msg"></span>
-  <button type="button" aria-label="Dismiss">&times;</button>
+  <button type="button" id="install-go" hidden></button>
+  <button type="button" id="install-x" aria-label="Dismiss">&times;</button>
 </div>
 <script>
 (function(){
   var box = document.getElementById("install");
-  var zh = false;
-  try { zh = (localStorage.getItem("sc_lang") || (/^zh/i.test(navigator.language||"") ? "zh" : "en")) === "zh"; } catch(e){
-    zh = /^zh/i.test(navigator.language||"");
+  var msgEl = document.getElementById("install-msg");
+  var go = document.getElementById("install-go");
+  var x = document.getElementById("install-x");
+
+  var COPY = {
+    en:{ ios:"To keep it on your phone: tap <b>Share</b>, then <b>Add to Home Screen</b>.",
+         other:"Keep Slide Clock on your home screen.", go:"Install" },
+    zh:{ ios:"要裝到手機上：點 <b>分享</b>，再選 <b>加入主畫面</b>。",
+         other:"把 Slide Clock 放到你的主畫面。", go:"安裝" }
+  };
+  function lang(){
+    try { return (localStorage.getItem("sc_lang") || (/^zh/i.test(navigator.language||"") ? "zh" : "en")); }
+    catch(e){ return /^zh/i.test(navigator.language||"") ? "zh" : "en"; }
   }
-  function msg(isZh){
-    document.getElementById("install-msg").innerHTML = isZh
-      ? "要裝到手機上：點 <b>分享</b>，再選 <b>加入主畫面</b>。"
-      : "To keep it on your phone: tap <b>Share</b>, then <b>Add to Home Screen</b>.";
-  }
-  msg(zh);
-  /* the app tells the page when the language changes */
-  document.addEventListener("sc:lang", function(e){ msg(e.detail === "zh"); });
+  var deferred = null;
   var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
                    || window.navigator.standalone === true;
   var ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
             || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   var dismissed = false;
   try { dismissed = localStorage.getItem("sc_install_hint") === "off"; } catch(e){}
-  if (ios && !standalone && !dismissed) box.hidden = false;
-  box.querySelector("button").onclick = function(){
+
+  function paint(){
+    var c = COPY[lang()] || COPY.en;
+    msgEl.innerHTML = deferred ? c.other : c.ios;
+    go.textContent = c.go;
+    go.hidden = !deferred;
+  }
+  function show(){ if (!standalone && !dismissed){ box.hidden = false; paint(); } }
+
+  /* Android and desktop Chrome offer a real install; iOS has no prompt of
+     its own, so there the page has to say where the button is. */
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault();
+    deferred = e;
+    show();
+  });
+  if (ios) show();
+
+  go.onclick = function(){
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.then(function(){ deferred = null; box.hidden = true; });
+  };
+  x.onclick = function(){
     box.hidden = true;
     try { localStorage.setItem("sc_install_hint","off"); } catch(e){}
   };
+  window.addEventListener("appinstalled", function(){ box.hidden = true; });
+  document.addEventListener("sc:lang", paint);
 })();
 if ("serviceWorker" in navigator){
   /* Cache-first means an installed copy keeps serving the old shell. When a
