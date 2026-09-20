@@ -136,6 +136,47 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border
 .stepval{font-family:var(--display);font-weight:800;font-size:clamp(46px,13vw,64px);letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums;min-width:2.2ch;text-align:center}
 .stepunit{font-family:var(--mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
 
+/* ---------- rehearsal ---------- */
+.recbtn{
+  width:40px;height:40px;border-radius:99px;border:1px solid var(--rule);
+  background:transparent;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.recdot{width:13px;height:13px;border-radius:99px;background:var(--ink-3)}
+.recbtn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.recbtn[aria-pressed="true"] .recdot{background:var(--accent)}
+.recbtn.live{border-color:var(--accent);background:var(--accent-soft)}
+.recbtn.live .recdot{background:var(--accent);animation:recpulse 1.4s ease-in-out infinite}
+@keyframes recpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.72)}}
+
+.review{display:flex;flex-direction:column;gap:14px}
+.rsum{
+  border:1px solid var(--rule);border-radius:var(--radius);
+  background:var(--card);padding:15px 16px;display:flex;flex-direction:column;gap:4px;
+}
+.rsum .k{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.rsum .v{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.035em}
+.rsum.over .v{color:var(--accent)}
+.rrows{display:flex;flex-direction:column;border-top:1px solid var(--rule)}
+.rrow{
+  display:flex;align-items:center;gap:11px;width:100%;
+  padding:12px 4px;border:0;border-bottom:1px solid var(--rule);
+  background:transparent;cursor:pointer;text-align:left;
+}
+.rrow:hover{background:var(--rule-2)}
+.rrow[aria-current="true"]{background:var(--accent-soft)}
+.rn{font-family:var(--mono);font-size:12px;color:var(--ink-3);min-width:2.4ch;flex-shrink:0}
+.rt{flex:1;min-width:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rtimes{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;flex-shrink:0}
+.rdelta{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;flex-shrink:0;min-width:6ch;text-align:right}
+.rdelta.over{color:var(--accent);font-weight:500}
+.rdelta.under{color:var(--ok)}
+.rbar{height:5px;border-radius:99px;background:var(--rule-2);overflow:hidden;display:flex;margin-top:5px}
+.rbar i{display:block;height:100%}
+.rbar .plan{background:var(--ink-3)}
+.rbar .act{background:var(--accent)}
+audio{width:100%;margin-top:2px}
+
 /* ---------- import ---------- */
 .importrow{display:flex;flex-direction:column;gap:9px}
 .filebtn{
@@ -428,6 +469,20 @@ en: {
   ringBtn:"Start or pause the clock", slideN:function(n){return "Slide "+n;},
 
   navSetup:"Setup", navNotes:"Notes", navPresent:"Present",
+  recArm:"Record this run", recOn:"Recording", recOff:"Not recording",
+  micDenied:"Microphone access was refused, so this run was not recorded.",
+  micNo:"This browser cannot record audio.",
+  reviewH:"How that run went",
+  reviewSub:"Planned against what you actually did.",
+  plannedCol:"Planned", actualCol:"Actual",
+  runTotal:function(p,a){return "Planned "+p+" \u00b7 you took "+a;},
+  applyTimes:"Use these times as my plan",
+  applied:"Your plan now matches what you actually did.",
+  discardRun:"Delete this rehearsal", backToClock:"Back to the clock",
+  seekHint:"Tap a slide to hear that part of the recording.",
+  noAudio:"No audio for this run.",
+  lastRun:function(d){return "Last rehearsal: "+d;},
+  reviewLink:"See the last rehearsal",
   errNotGranted:"You have not allowed this page to call Claude. Use Split evenly and adjust by hand.",
   errRate:"Too many requests in a row. Wait a few seconds.",
   errGeneric:"That did not come back cleanly. Use Split evenly and adjust by hand."
@@ -474,6 +529,20 @@ zh: {
   ringBtn:"\u958b\u59cb\u6216\u66ab\u505c\u8a08\u6642", slideN:function(n){return "\u7b2c "+n+" \u9801";},
 
   navSetup:"\u8a2d\u5b9a", navNotes:"\u8b1b\u7a3f", navPresent:"\u4e0a\u53f0",
+  recArm:"\u9304\u4e0b\u9019\u6b21\u7df4\u7fd2", recOn:"\u9304\u97f3\u4e2d", recOff:"\u672a\u9304\u97f3",
+  micDenied:"\u9ea5\u514b\u98a8\u6b0a\u9650\u88ab\u62d2\u7d55\uff0c\u9019\u6b21\u7df4\u7fd2\u6c92\u6709\u9304\u5230\u97f3\u3002",
+  micNo:"\u9019\u500b\u700f\u89bd\u5668\u4e0d\u80fd\u9304\u97f3\u3002",
+  reviewH:"\u9019\u6b21\u7df4\u7fd2\u8dd1\u5f97\u5982\u4f55",
+  reviewSub:"\u8a08\u756b\u6642\u9593\u5c0d\u4e0a\u4f60\u5be6\u969b\u7684\u8868\u73fe\u3002",
+  plannedCol:"\u8a08\u756b", actualCol:"\u5be6\u969b",
+  runTotal:function(p,a){return "\u8a08\u756b "+p+" \u00b7 \u4f60\u82b1\u4e86 "+a;},
+  applyTimes:"\u7528\u5be6\u969b\u6642\u9593\u7576\u6210\u65b0\u7684\u8a08\u756b",
+  applied:"\u8a08\u756b\u5df2\u66f4\u65b0\u6210\u4f60\u5be6\u969b\u8b1b\u7684\u6642\u9593\u3002",
+  discardRun:"\u522a\u9664\u9019\u6b21\u7df4\u7fd2", backToClock:"\u56de\u5230\u8a08\u6642",
+  seekHint:"\u9ede\u4e00\u9801\u5c31\u8df3\u5230\u9304\u97f3\u7684\u90a3\u4e00\u6bb5\u3002",
+  noAudio:"\u9019\u6b21\u6c92\u6709\u9304\u5230\u97f3\u3002",
+  lastRun:function(d){return "\u4e0a\u6b21\u7df4\u7fd2\uff1a"+d;},
+  reviewLink:"\u770b\u4e0a\u6b21\u7df4\u7fd2\u7684\u7d50\u679c",
   errNotGranted:"\u4f60\u6c92\u6709\u5141\u8a31\u9019\u500b\u9801\u9762\u547c\u53eb Claude\u3002\u8acb\u7528\u300c\u5e73\u5747\u5206\u914d\u300d\u518d\u624b\u52d5\u8abf\u3002",
   errRate:"\u53eb\u5f97\u592a\u983b\u7e41\u4e86\uff0c\u7b49\u5e7e\u79d2\u518d\u8a66\u3002",
   errGeneric:"\u9019\u6b21\u6c92\u6709\u6b63\u5e38\u56de\u4f86\u3002\u8acb\u7528\u300c\u5e73\u5747\u5206\u914d\u300d\u518d\u624b\u52d5\u8abf\u3002"
@@ -518,6 +587,7 @@ function blank(){
   return {
     step:0, title:"", totalMin:15, demo:false,
     slides:[], open:0,
+    run:null, rehearsal:null, reviewing:false,
     cur:0,
     running:false, startedAt:0, accMs:0, slideStartMs:0, everStarted:false
   };
@@ -925,9 +995,18 @@ function buildCard(i, live, ctl){
   top.appendChild(n);
   var ttl = el("div","pcard-title", (sl.title||"").trim());
   top.appendChild(ttl);
-  var reset = el("button","resetbtn","\u21BA");
-  reset.setAttribute("aria-label",tr("resetClock"));
-  if (ctl) reset.onclick = ctl.onReset; else reset.tabIndex = -1;
+  if (ctl && recSupported){
+    var rec = el("button","recbtn" + (S.run ? " live" : ""));
+    rec.appendChild(el("span","recdot"));
+    rec.setAttribute("aria-pressed", String(recArmed));
+    rec.setAttribute("aria-label", tr(S.run ? "recOn" : (recArmed ? "recOn" : "recArm")));
+    rec.disabled = !!S.run;               /* arming mid-run would miss the start */
+    rec.onclick = ctl.onArm;
+    top.appendChild(rec);
+  }
+  var reset = el("button","resetbtn", S.run ? "\u25A0" : "\u21BA");
+  reset.setAttribute("aria-label", tr(S.run ? "backToClock" : "resetClock"));
+  if (ctl) reset.onclick = S.run ? ctl.onFinish : ctl.onReset; else reset.tabIndex = -1;
   top.appendChild(reset);
   card.appendChild(top);
 
@@ -988,6 +1067,113 @@ function buildCard(i, live, ctl){
   return card;
 }
 
+function actualBySlide(run){
+  /* a speaker can go back and forth, so add up every visit to a slide */
+  var acc = {};
+  (run.marks||[]).forEach(function(m){
+    if (typeof m.to !== "number") return;
+    acc[m.i] = (acc[m.i] || 0) + Math.max(0, m.to - m.from);
+  });
+  return acc;
+}
+
+function buildReview(){
+  var run = S.rehearsal;
+  var wrap = el("section","step review");
+  var h = el("div","panel-head");
+  h.appendChild(el("h2","",tr("reviewH")));
+  h.appendChild(el("p","sub",tr("reviewSub")));
+  wrap.appendChild(h);
+
+  var planned = allocatedMs();
+  var sum = el("div","rsum" + (run.totalMs > planned ? " over" : ""));
+  sum.appendChild(el("span","k",tr("actualCol")));
+  sum.appendChild(el("span","v", fmt(run.totalMs)));
+  sum.appendChild(el("span","k", tr("runTotal", fmt(planned), fmt(run.totalMs))));
+  wrap.appendChild(sum);
+
+  var audio = null;
+  if (run.hasAudio){
+    audio = el("audio");
+    audio.controls = true;
+    audio.preload = "metadata";
+    idbGet("run-audio").then(function(blob){
+      if (!blob) return;
+      audio.src = URL.createObjectURL(blob);
+      /* a MediaRecorder webm carries no duration, so seeking is dead until
+         the browser is forced to scan it */
+      audio.addEventListener("loadedmetadata", function fix(){
+        if (audio.duration !== Infinity) return;
+        audio.currentTime = 1e6;
+        audio.addEventListener("timeupdate", function once(){
+          audio.removeEventListener("timeupdate", once);
+          audio.currentTime = 0;
+        });
+      });
+    }).catch(function(){});
+    wrap.appendChild(audio);
+    wrap.appendChild(el("p","hint",tr("seekHint")));
+  } else {
+    wrap.appendChild(el("p","hint", recError === "denied" ? tr("micDenied") : tr("noAudio")));
+  }
+
+  var acc = actualBySlide(run);
+  var worst = 0;
+  S.slides.forEach(function(sl,i){ worst = Math.max(worst, Math.abs((acc[i]||0) - sl.min*60000)); });
+
+  var rows = el("div","rrows");
+  S.slides.forEach(function(sl,i){
+    var plan = sl.min*60000, act = acc[i] || 0, d = act - plan;
+    var r = el("button","rrow");
+    r.appendChild(el("span","rn", String(i+1).padStart(2,"0")));
+    var mid = el("span","rt", labelFor(sl) || tr("nothingYet"));
+    r.appendChild(mid);
+    r.appendChild(el("span","rtimes", fmt(plan) + " \u2192 " + fmt(act)));
+    var dl = el("span","rdelta" + (Math.abs(d) < 5000 ? "" : (d > 0 ? " over" : " under")),
+                (d > 0 ? "+" : d < 0 ? "\u2212" : "") + fmt(Math.abs(d)));
+    r.appendChild(dl);
+    var first = (run.marks || []).filter(function(m){ return m.i === i; })[0];
+    r.onclick = function(){
+      if (!audio || !first) return;
+      try { audio.currentTime = first.from / 1000; audio.play(); } catch(e){}
+      [].forEach.call(rows.children, function(x){ x.setAttribute("aria-current","false"); });
+      r.setAttribute("aria-current","true");
+    };
+    rows.appendChild(r);
+  });
+  wrap.appendChild(rows);
+
+  var act1 = el("div","actions");
+  var apply = el("button","btn accent", tr("applyTimes"));
+  apply.onclick = function(){
+    S.slides.forEach(function(sl,i){
+      var a = acc[i] || 0;
+      var m = Math.round((a/60000)*2)/2;
+      sl.min = Math.max(0.5, Math.min(30, m || 0.5));
+    });
+    S.totalMin = Math.max(1, Math.round((allocatedMs()/60000)*2)/2);
+    save();
+    apply.replaceWith(el("div","importmsg", tr("applied")));
+  };
+  act1.appendChild(apply);
+  wrap.appendChild(act1);
+
+  var act2 = el("div","actions");
+  var back = el("button","btn ghost", tr("backToClock"));
+  back.onclick = function(){
+    set({reviewing:false, running:false, accMs:0, slideStartMs:0, cur:0, everStarted:false});
+  };
+  var drop = el("button","linkbtn", tr("discardRun"));
+  drop.onclick = function(){
+    idbPut("run-audio", null).catch(function(){});
+    set({rehearsal:null, reviewing:false, running:false, accMs:0, slideStartMs:0, cur:0, everStarted:false});
+  };
+  act2.appendChild(back);
+  wrap.appendChild(act2);
+  wrap.appendChild(drop);
+  return wrap;
+}
+
 function stepPresent(){
   var p = el("section","step");
   if (!S.slides.length){
@@ -996,6 +1182,7 @@ function stepPresent(){
     p.appendChild(b0);
     return p;
   }
+  if (S.reviewing && S.rehearsal) return buildReview();
   var N = S.slides.length;
   var i = Math.max(0, Math.min(N-1, S.cur));
   var sl = S.slides[i];
@@ -1009,11 +1196,40 @@ function stepPresent(){
   var ctl = {
     onPrev:   function(){ settle(1); },
     onNext:   function(){ settle(-1); },
-    onReset:  function(){ releaseWake(); set({running:false, accMs:0, slideStartMs:0, cur:0, everStarted:false}); },
+    onArm:    function(){
+      if (S.run) return;
+      recArmed = !recArmed;
+      recError = null;
+      render();
+    },
+    onFinish: function(){
+      releaseWake();
+      S.running = false;
+      finishRun().then(function(){ set({reviewing:true}); });
+    },
+    onReset:  function(){
+      releaseWake();
+      recStop();
+      set({running:false, accMs:0, slideStartMs:0, cur:0, everStarted:false, run:null});
+    },
     onToggle: function(){
-      if (S.running){ S.accMs = elapsedMs(); S.running=false; releaseWake(); }
-      else { S.startedAt = Date.now(); S.running=true; S.everStarted=true; requestWake(); }
-      save(); tick();
+      if (S.running){
+        S.accMs = elapsedMs(); S.running = false; releaseWake(); recPause();
+      } else {
+        S.startedAt = Date.now(); S.running = true; requestWake();
+        if (!S.everStarted){
+          S.everStarted = true;
+          if (recArmed){
+            S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false};
+            recStart().then(function(){ render(); });
+          } else {
+            S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false};
+          }
+        } else {
+          recResume();
+        }
+      }
+      save(); render();
     }
   };
   [-1,0,1].forEach(function(off){
@@ -1060,6 +1276,11 @@ function stepPresent(){
   }
   frame.appendChild(dots);
 
+  if (S.rehearsal && !S.run){
+    var seeLast = el("button","linkbtn", tr("reviewLink"));
+    seeLast.onclick = function(){ set({reviewing:true}); };
+    frame.appendChild(seeLast);
+  }
   p.appendChild(frame);
 
   /* Size the frame to whatever is actually left between the masthead and the
@@ -1142,7 +1363,12 @@ function stepPresent(){
   function goSlide(j){
     var k = Math.max(0, Math.min(N-1, j));
     if (k === i){ settling=false; settle(0); return; }
-    S.slideStartMs = elapsedMs(); S.cur = k; save(); render();
+    var e = elapsedMs();
+    if (S.run && S.run.marks.length){
+      S.run.marks[S.run.marks.length-1].to = e;
+      S.run.marks.push({i:k, from:e});
+    }
+    S.slideStartMs = e; S.cur = k; save(); render();
   }
   keyNav = function(e){
     if (S.step !== 2) return;
@@ -1262,6 +1488,79 @@ function suggestSplit(host){
             : (e && e.code==="rate_limited") ? tr("errRate")
             : tr("errGeneric");
     think.replaceWith(el("div","err", msg));
+  });
+}
+
+/* ---------- rehearsal recording ----------
+   Audio alone is not worth much: listening back to fifteen minutes to find
+   the slide you overran is work nobody does. What makes it useful is the
+   timeline - every page turn is stamped, so afterwards the run can be shown
+   as planned against actual, and the actual times can become the new plan.
+
+   The blob stays in IndexedDB on the device. Nothing is uploaded, and only
+   the most recent run is kept. */
+var recSupported = (typeof MediaRecorder !== "undefined") &&
+                   !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+var recArmed = false, recorder = null, recChunks = [], recStream = null, recError = null;
+
+function pickMime(){
+  var want = ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg"];
+  for (var i=0;i<want.length;i++){
+    try { if (MediaRecorder.isTypeSupported(want[i])) return want[i]; } catch(e){}
+  }
+  return "";
+}
+
+function recStart(){
+  if (!recArmed || !recSupported || recorder) return Promise.resolve();
+  return navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    recStream = stream;
+    recChunks = [];
+    var mime = pickMime();
+    recorder = mime ? new MediaRecorder(stream, {mimeType:mime}) : new MediaRecorder(stream);
+    recorder.ondataavailable = function(e){ if (e.data && e.data.size) recChunks.push(e.data); };
+    recorder.start();
+    recError = null;
+  }).catch(function(){
+    recError = "denied";
+    recArmed = false;
+    recorder = null;
+  });
+}
+
+function recPause(){ try { if (recorder && recorder.state === "recording") recorder.pause(); } catch(e){} }
+function recResume(){ try { if (recorder && recorder.state === "paused") recorder.resume(); } catch(e){} }
+
+function recStop(){
+  return new Promise(function(res){
+    if (!recorder){ res(null); return; }
+    var r = recorder;
+    recorder = null;
+    r.onstop = function(){
+      try { recStream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){}
+      recStream = null;
+      var blob = recChunks.length ? new Blob(recChunks, {type: recChunks[0].type || "audio/webm"}) : null;
+      recChunks = [];
+      res(blob);
+    };
+    try { r.stop(); } catch(e){ res(null); }
+  });
+}
+
+/* close the open mark and file the run away */
+function finishRun(){
+  var run = S.run;
+  if (!run || !run.marks.length) return recStop().then(function(){});
+  var e = elapsedMs();
+  run.marks[run.marks.length-1].to = e;
+  run.totalMs = e;
+  run.at = Date.now();
+  return recStop().then(function(blob){
+    run.hasAudio = !!blob;
+    S.rehearsal = run;
+    S.run = null;
+    save();
+    if (blob) return idbPut("run-audio", blob).catch(function(){});
   });
 }
 
