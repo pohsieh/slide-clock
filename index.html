@@ -149,6 +149,20 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border
 .recbtn.live .recdot{background:var(--accent);animation:recpulse 1.4s ease-in-out infinite}
 @keyframes recpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.72)}}
 
+.recchip{
+  display:inline-flex;align-items:center;gap:7px;align-self:flex-start;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent);border-radius:99px;padding:5px 11px;
+}
+.recchip .recdot{width:9px;height:9px;animation:recpulse 1.4s ease-in-out infinite}
+.rplay{
+  width:34px;height:34px;border-radius:99px;flex-shrink:0;
+  border:1px solid var(--rule);background:var(--card);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink-2);
+}
+.rplay:disabled{opacity:.3;cursor:not-allowed}
+.rrow[aria-current="true"] .rplay{border-color:var(--accent);color:var(--accent)}
 .review{display:flex;flex-direction:column;gap:14px}
 .rsum{
   border:1px solid var(--rule);border-radius:var(--radius);
@@ -483,6 +497,10 @@ en: {
   noAudio:"No audio for this run.",
   lastRun:function(d){return "Last rehearsal: "+d;},
   reviewLink:"See the last rehearsal", notReached:"never reached",
+  recReady:"Microphone on \u2014 this run will be recorded",
+  recNotArmed:"This run was not recorded. Tap the dot beside the slide number before you start.",
+  recEmpty:"The microphone was on, but nothing was captured.",
+  playSlide:"Play this slide", playingNow:"Playing",
   errNotGranted:"You have not allowed this page to call Claude. Use Split evenly and adjust by hand.",
   errRate:"Too many requests in a row. Wait a few seconds.",
   errGeneric:"That did not come back cleanly. Use Split evenly and adjust by hand."
@@ -543,6 +561,10 @@ zh: {
   noAudio:"\u9019\u6b21\u6c92\u6709\u9304\u5230\u97f3\u3002",
   lastRun:function(d){return "\u4e0a\u6b21\u7df4\u7fd2\uff1a"+d;},
   reviewLink:"\u770b\u4e0a\u6b21\u7df4\u7fd2\u7684\u7d50\u679c", notReached:"\u6c92\u8b1b\u5230",
+  recReady:"\u9ea5\u514b\u98a8\u5df2\u958b \u2014\u2014 \u9019\u6b21\u6703\u9304\u97f3",
+  recNotArmed:"\u9019\u6b21\u6c92\u6709\u9304\u97f3\u3002\u958b\u59cb\u524d\u8981\u5148\u9ede\u9801\u78bc\u65c1\u908a\u90a3\u500b\u5713\u9ede\u3002",
+  recEmpty:"\u9ea5\u514b\u98a8\u6709\u958b\uff0c\u4f46\u6c92\u6709\u6536\u5230\u8072\u97f3\u3002",
+  playSlide:"\u64ad\u653e\u9019\u4e00\u9801", playingNow:"\u64ad\u653e\u4e2d",
   errNotGranted:"\u4f60\u6c92\u6709\u5141\u8a31\u9019\u500b\u9801\u9762\u547c\u53eb Claude\u3002\u8acb\u7528\u300c\u5e73\u5747\u5206\u914d\u300d\u518d\u624b\u52d5\u8abf\u3002",
   errRate:"\u53eb\u5f97\u592a\u983b\u7e41\u4e86\uff0c\u7b49\u5e7e\u79d2\u518d\u8a66\u3002",
   errGeneric:"\u9019\u6b21\u6c92\u6709\u6b63\u5e38\u56de\u4f86\u3002\u8acb\u7528\u300c\u5e73\u5747\u5206\u914d\u300d\u518d\u624b\u52d5\u8abf\u3002"
@@ -1002,6 +1024,7 @@ function buildCard(i, live, ctl){
     rec.appendChild(el("span","recdot"));
     rec.setAttribute("aria-pressed", String(recArmed));
     rec.setAttribute("aria-label", tr(S.run ? "recOn" : (recArmed ? "recOn" : "recArm")));
+    rec.className = "recbtn" + (S.run && S.run.armed ? " live" : "");
     rec.disabled = !!S.run;               /* arming mid-run would miss the start */
     rec.onclick = ctl.onArm;
     top.appendChild(rec);
@@ -1094,7 +1117,14 @@ function buildReview(){
   sum.appendChild(el("span","k", tr("runTotal", fmt(planned), fmt(run.totalMs))));
   wrap.appendChild(sum);
 
-  var audio = null;
+  var audio = null, segEnd = null, rows = el("div","rrows");
+
+  function highlight(idx){
+    [].forEach.call(rows.children, function(x,j){
+      x.setAttribute("aria-current", String(j === idx));
+    });
+  }
+
   if (run.hasAudio){
     audio = el("audio");
     audio.controls = true;
@@ -1104,7 +1134,7 @@ function buildReview(){
       audio.src = URL.createObjectURL(blob);
       /* a MediaRecorder webm carries no duration, so seeking is dead until
          the browser is forced to scan it */
-      audio.addEventListener("loadedmetadata", function fix(){
+      audio.addEventListener("loadedmetadata", function(){
         if (audio.duration !== Infinity) return;
         audio.currentTime = 1e6;
         audio.addEventListener("timeupdate", function once(){
@@ -1113,37 +1143,54 @@ function buildReview(){
         });
       });
     }).catch(function(){});
+
+    /* playing one slide means stopping at the end of that slide, so you hear
+       exactly the part you were unsure about and nothing after it */
+    audio.addEventListener("timeupdate", function(){
+      var ms = audio.currentTime * 1000;
+      if (segEnd !== null && ms >= segEnd){ audio.pause(); segEnd = null; }
+      var at = -1;
+      (run.marks || []).forEach(function(m){
+        var to = (typeof m.to === "number") ? m.to : run.totalMs;
+        if (ms >= m.from && ms < to) at = m.i;
+      });
+      highlight(at);
+    });
+    audio.addEventListener("pause", function(){ segEnd = null; });
     wrap.appendChild(audio);
     wrap.appendChild(el("p","hint",tr("seekHint")));
   } else {
-    wrap.appendChild(el("p","hint", recError === "denied" ? tr("micDenied") : tr("noAudio")));
+    wrap.appendChild(el("p","hint", run.armed ? tr("recEmpty") : tr("recNotArmed")));
   }
 
   var acc = actualBySlide(run);
-  var worst = 0;
-  S.slides.forEach(function(sl,i){ worst = Math.max(worst, Math.abs((acc[i]||0) - sl.min*60000)); });
 
-  var rows = el("div","rrows");
   S.slides.forEach(function(sl,i){
     var plan = sl.min*60000, seen = acc.hasOwnProperty(i), act = acc[i] || 0, d = act - plan;
     var r = el("button","rrow");
     r.appendChild(el("span","rn", String(i+1).padStart(2,"0")));
-    var mid = el("span","rt", labelFor(sl) || tr("nothingYet"));
-    r.appendChild(mid);
+    r.appendChild(el("span","rt", labelFor(sl) || tr("nothingYet")));
     r.appendChild(el("span","rtimes", seen ? (fmt(plan) + " \u2192 " + fmt(act)) : fmt(plan)));
     /* a slide you never reached is not a slide you were quick on */
-    var dl = seen
+    r.appendChild(seen
       ? el("span","rdelta" + (Math.abs(d) < 5000 ? "" : (d > 0 ? " over" : " under")),
            (d > 0 ? "+" : d < 0 ? "\u2212" : "") + fmt(Math.abs(d)))
-      : el("span","rdelta", tr("notReached"));
-    r.appendChild(dl);
+      : el("span","rdelta", tr("notReached")));
+
     var first = (run.marks || []).filter(function(m){ return m.i === i; })[0];
-    r.onclick = function(){
-      if (!audio || !first) return;
+    var play = el("button","rplay","\u25B6");
+    play.setAttribute("aria-label", tr("playSlide") + " " + (i+1));
+    play.disabled = !(audio && first);
+    function playThis(ev){
+      if (ev) ev.stopPropagation();
+      if (!audio || !first || !audio.src) return;
+      segEnd = (typeof first.to === "number") ? first.to : run.totalMs;
       try { audio.currentTime = first.from / 1000; audio.play(); } catch(e){}
-      [].forEach.call(rows.children, function(x){ x.setAttribute("aria-current","false"); });
-      r.setAttribute("aria-current","true");
-    };
+      highlight(i);
+    }
+    play.onclick = playThis;
+    r.onclick = playThis;
+    r.appendChild(play);
     rows.appendChild(r);
   });
   wrap.appendChild(rows);
@@ -1203,9 +1250,8 @@ function stepPresent(){
     onNext:   function(){ settle(-1); },
     onArm:    function(){
       if (S.run) return;
-      recArmed = !recArmed;
-      recError = null;
-      render();
+      if (recArmed){ recDisarm(); render(); return; }
+      recArm().then(function(){ render(); });
     },
     onFinish: function(){
       releaseWake();
@@ -1226,10 +1272,10 @@ function stepPresent(){
         if (!S.everStarted){
           S.everStarted = true;
           if (recArmed){
-            S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false};
-            recStart().then(function(){ render(); });
+            S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false, armed:true};
+            recStart();
           } else {
-            S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false};
+            S.run = {marks:[{i:S.cur, from:0}], totalMs:0, at:0, hasAudio:false, armed:false};
           }
         } else {
           recResume();
@@ -1282,6 +1328,14 @@ function stepPresent(){
   }
   frame.appendChild(dots);
 
+  if (recSupported && (recArmed || (S.run && S.run.armed))){
+    var chip = el("div","recchip");
+    chip.appendChild(el("span","recdot"));
+    chip.appendChild(el("span","", tr(S.run ? "recOn" : "recReady")));
+    frame.appendChild(chip);
+  } else if (recError === "denied"){
+    frame.appendChild(el("div","importmsg bad", tr("micDenied")));
+  }
   if (S.rehearsal && !S.run){
     var seeLast = el("button","linkbtn", tr("reviewLink"));
     seeLast.onclick = function(){ set({reviewing:true}); };
@@ -1509,6 +1563,23 @@ var recSupported = (typeof MediaRecorder !== "undefined") &&
                    !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 var recArmed = false, recorder = null, recChunks = [], recStream = null, recError = null;
 
+/* Permission is requested when you arm, not when you start. Asking at the
+   moment the clock starts puts a system dialog in front of someone who is
+   about to speak, and if they miss it the whole run is silently unrecorded -
+   which is exactly what happened. */
+function recArm(){
+  if (!recSupported){ recError = "unsupported"; return Promise.resolve(false); }
+  return navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    recStream = stream; recArmed = true; recError = null; return true;
+  }).catch(function(){
+    recStream = null; recArmed = false; recError = "denied"; return false;
+  });
+}
+function recDisarm(){
+  try { if (recStream) recStream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){}
+  recStream = null; recArmed = false; recError = null;
+}
+
 function pickMime(){
   var want = ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg"];
   for (var i=0;i<want.length;i++){
@@ -1518,20 +1589,17 @@ function pickMime(){
 }
 
 function recStart(){
-  if (!recArmed || !recSupported || recorder) return Promise.resolve();
-  return navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
-    recStream = stream;
+  if (!recArmed || !recStream || recorder) return;
+  try {
     recChunks = [];
     var mime = pickMime();
-    recorder = mime ? new MediaRecorder(stream, {mimeType:mime}) : new MediaRecorder(stream);
+    recorder = mime ? new MediaRecorder(recStream, {mimeType:mime}) : new MediaRecorder(recStream);
     recorder.ondataavailable = function(e){ if (e.data && e.data.size) recChunks.push(e.data); };
-    recorder.start();
+    recorder.start(1000);          /* flush every second, so a crash costs one second */
     recError = null;
-  }).catch(function(){
-    recError = "denied";
-    recArmed = false;
-    recorder = null;
-  });
+  } catch(e){
+    recorder = null; recError = "failed";
+  }
 }
 
 function recPause(){ try { if (recorder && recorder.state === "recording") recorder.pause(); } catch(e){} }
@@ -1700,7 +1768,7 @@ function render(){
   clearInterval(ticker); ticker=null; keyNav=null; fitPresent=null;
   renderLangSel();
   document.documentElement.lang = (LANG === "zh" ? "zh-Hant" : "en");
-  document.body.classList.toggle("presenting", S.step === 2);
+  document.body.classList.toggle("presenting", S.step === 2 && !(S.reviewing && S.rehearsal));
   if (!navBuilt){ buildNav(); navBuilt = true; }
   var stage = document.getElementById("stage");
   var views = [stepSetup, stepNotes, stepPresent];
