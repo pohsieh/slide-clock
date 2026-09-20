@@ -156,6 +156,8 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border
   border:1px solid var(--accent);border-radius:99px;padding:5px 11px;
 }
 .recchip .recdot{width:9px;height:9px;animation:recpulse 1.4s ease-in-out infinite}
+.reclevel{display:flex;align-items:flex-end;gap:2px;height:13px;margin-left:2px}
+.reclevel i{width:3px;height:3px;border-radius:2px;background:var(--accent);opacity:.35;transition:height .08s linear,opacity .08s linear}
 .rplay{
   width:34px;height:34px;border-radius:99px;flex-shrink:0;
   border:1px solid var(--rule);background:var(--card);cursor:pointer;
@@ -1332,7 +1334,11 @@ function stepPresent(){
     var chip = el("div","recchip");
     chip.appendChild(el("span","recdot"));
     chip.appendChild(el("span","", tr(S.run ? "recOn" : "recReady")));
+    var lvl = el("span","reclevel");
+    for (var b=0;b<5;b++) lvl.appendChild(el("i"));
+    chip.appendChild(lvl);
     frame.appendChild(chip);
+    levelAttach(lvl);
   } else if (recError === "denied"){
     frame.appendChild(el("div","importmsg bad", tr("micDenied")));
   }
@@ -1575,7 +1581,49 @@ function recArm(){
     recStream = null; recArmed = false; recError = "denied"; return false;
   });
 }
+/* Permission granted is not the same as the microphone hearing anything.
+   The meter is the only honest answer to "is this actually recording?" */
+var lvlCtx = null, lvlNode = null, lvlRaf = null, lvlEl = null;
+function levelAttach(el){
+  lvlEl = el;
+  if (!recStream || lvlNode) return draw();
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    lvlCtx = new AC();
+    if (lvlCtx.state === "suspended") lvlCtx.resume();
+    var src = lvlCtx.createMediaStreamSource(recStream);
+    lvlNode = lvlCtx.createAnalyser();
+    lvlNode.fftSize = 256;
+    src.connect(lvlNode);
+  } catch(e){ lvlNode = null; }
+  draw();
+  function draw(){
+    if (!lvlEl || !lvlEl.isConnected){ lvlRaf = null; return; }
+    var v = 0;
+    if (lvlNode){
+      var buf = new Uint8Array(lvlNode.frequencyBinCount);
+      lvlNode.getByteTimeDomainData(buf);
+      var peak = 0;
+      for (var i=0;i<buf.length;i++) peak = Math.max(peak, Math.abs(buf[i]-128));
+      v = Math.min(1, peak/48);
+    }
+    [].forEach.call(lvlEl.children, function(bar, i){
+      var on = v > (i+0.5)/lvlEl.children.length;
+      bar.style.height = (3 + (on ? 10 : 0)) + "px";
+      bar.style.opacity = on ? "1" : ".35";
+    });
+    lvlRaf = requestAnimationFrame(draw);
+  }
+}
+function levelDetach(){
+  if (lvlRaf) cancelAnimationFrame(lvlRaf);
+  lvlRaf = null; lvlEl = null; lvlNode = null;
+  try { if (lvlCtx) lvlCtx.close(); } catch(e){}
+  lvlCtx = null;
+}
+
 function recDisarm(){
+  levelDetach();
   try { if (recStream) recStream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){}
   recStream = null; recArmed = false; recError = null;
 }
@@ -1615,6 +1663,7 @@ function recStop(){
       recStream = null;
       var blob = recChunks.length ? new Blob(recChunks, {type: recChunks[0].type || "audio/webm"}) : null;
       recChunks = [];
+      levelDetach();
       res(blob);
     };
     try { r.stop(); } catch(e){ res(null); }
