@@ -1243,8 +1243,20 @@ render();
   };
 })();
 if ("serviceWorker" in navigator){
+  /* Cache-first means an installed copy keeps serving the old shell. When a
+     new worker takes over, reload once so the update actually lands instead
+     of waiting for the user to guess they should close the app twice. */
+  var hadController = !!navigator.serviceWorker.controller, refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", function(){
+    if (!hadController || refreshing) return;   /* first install: nothing stale on screen */
+    refreshing = true;
+    location.reload();
+  });
   window.addEventListener("load", function(){
-    navigator.serviceWorker.register("sw.js").catch(function(){});
+    navigator.serviceWorker.register("sw.js").then(function(reg){
+      reg.update();
+      setInterval(function(){ reg.update(); }, 60 * 60 * 1000);
+    }).catch(function(){});
   });
 }
 </script>
